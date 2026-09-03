@@ -131,6 +131,13 @@ BENCHMARKS: dict[str, BenchmarkConfig] = {
         expected_rows=541,
         data_path=_data("ifeval.jsonl"),
     ),
+    "lcr": BenchmarkConfig(
+        name="lcr",
+        task="aa_lcr",
+        expected_rows=100,
+        data_path=_data("lcr.jsonl"),
+        chat_template_kwargs={"reasoning_effort": "high"},
+    ),
 }
 
 
@@ -142,6 +149,8 @@ ALIASES = {
     "lcb": "lcbv6",
     "livecodebench": "lcbv6",
     "mmlu-pro": "mmlu_pro",
+    "aa-lcr": "lcr",
+    "aa_lcr": "lcr",
 }
 
 

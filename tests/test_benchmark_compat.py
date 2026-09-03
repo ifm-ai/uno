@@ -79,6 +79,7 @@ class BenchmarkCompatibilityTest(unittest.TestCase):
                 "gpqa_diamond",
                 "mmlu_pro",
                 "ifeval",
+                "lcr",
             ),
         )
         self.assertTrue(all(config.expected_rows > 0 for config in BENCHMARKS.values()))
@@ -101,6 +102,7 @@ class BenchmarkCompatibilityTest(unittest.TestCase):
             "gpqa_diamond": "run_gpqa_diamond_eval.sh",
             "mmlu_pro": "run_mmlu_pro_eval.sh",
             "ifeval": "run_ifeval_eval.sh",
+            "lcr": "run_lcr_eval.sh",
         }
         self.assertEqual(set(wrappers), set(BENCHMARKS))
         self.assertTrue(
