@@ -88,7 +88,7 @@ class BenchmarkCompatibilityTest(unittest.TestCase):
         )
 
     def test_canonical_suite_has_a_launcher_for_every_benchmark(self):
-        scripts = Path(__file__).resolve().parents[1] / "scripts" / "uno_exp"
+        scripts = Path(__file__).resolve().parents[1] / "scripts" / "qwen"
         wrappers = {
             "gsm8k": "run_gsm8k_eval.sh",
             "math500": "run_math500_eval.sh",
@@ -111,7 +111,7 @@ class BenchmarkCompatibilityTest(unittest.TestCase):
 
     def test_per_benchmark_launcher_forwards_attention_backend(self):
         repository = Path(__file__).resolve().parents[1]
-        runner = repository / "scripts" / "uno_exp" / "run_benchmark.sh"
+        runner = repository / "scripts" / "qwen" / "run_benchmark.sh"
         with tempfile.TemporaryDirectory() as directory:
             temporary = Path(directory)
             fake_python = temporary / "python"
@@ -143,7 +143,7 @@ class BenchmarkCompatibilityTest(unittest.TestCase):
         source_wrapper = (
             repository
             / "scripts"
-            / "uno_exp"
+            / "qwen"
             / "run_benchmark_slurm.sh"
         )
         with tempfile.TemporaryDirectory() as directory:
@@ -152,7 +152,7 @@ class BenchmarkCompatibilityTest(unittest.TestCase):
             runner = (
                 fake_repository
                 / "scripts"
-                / "uno_exp"
+                / "qwen"
                 / "run_benchmark.sh"
             )
             runner.parent.mkdir(parents=True)
@@ -182,13 +182,13 @@ class BenchmarkCompatibilityTest(unittest.TestCase):
         source_wrapper = (
             repository
             / "scripts"
-            / "uno_exp"
+            / "qwen"
             / "run_pull_suite_slurm.sh"
         )
         with tempfile.TemporaryDirectory() as directory:
             temporary = Path(directory)
             fake_repository = temporary / "checkout"
-            script_directory = fake_repository / "scripts" / "uno_exp"
+            script_directory = fake_repository / "scripts" / "qwen"
             script_directory.mkdir(parents=True)
             (script_directory / "release_model_defaults.sh").write_text(
                 "MODEL=fake-model\nGATED_LORA_PATH=\n"
@@ -199,7 +199,7 @@ class BenchmarkCompatibilityTest(unittest.TestCase):
                 (
                     repository
                     / "scripts"
-                    / "uno_exp"
+                    / "qwen"
                     / "eval_defaults.sh"
                 ).read_bytes()
             )

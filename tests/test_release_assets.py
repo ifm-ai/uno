@@ -105,7 +105,7 @@ class PublicDatasetBuilderTest(unittest.TestCase):
         script = (
             Path(__file__).resolve().parents[1]
             / "scripts"
-            / "uno_exp"
+            / "qwen"
             / "prepare_benchmark_data.py"
         )
         parse_args = runpy.run_path(str(script))["parse_args"]

@@ -15,7 +15,7 @@ source "${SCRIPT_DIR}/release_model_defaults.sh"
 source "${SCRIPT_DIR}/eval_defaults.sh"
 
 RUN_NAME="${RUN_NAME:-$(basename "${GATED_LORA_PATH}")}"
-RESULTS_ROOT="${RESULTS_ROOT:-${REPO_ROOT}/results/uno_exp}"
+RESULTS_ROOT="${RESULTS_ROOT:-${REPO_ROOT}/results/qwen}"
 OUTPUT_DIR="${OUTPUT_DIR:-${RESULTS_ROOT}/${RUN_NAME}/${BENCHMARK}}"
 OUTPUT="${OUTPUT:-${OUTPUT_DIR}/generations.jsonl}"
 GRADES="${GRADES:-${OUTPUT_DIR}/grades.jsonl}"

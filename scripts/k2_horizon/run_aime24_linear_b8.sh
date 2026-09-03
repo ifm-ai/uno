@@ -2,6 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+export RESULTS_ROOT="${RESULTS_ROOT:-${SCRIPT_DIR}/../../results/k2_horizon}"
 
 if [[ -z "${MODEL:-}" ]]; then
   MODEL="IFM/K2-Horizon-7B"
@@ -31,4 +32,4 @@ export MASK_TOKEN_ID="${MASK_TOKEN_ID:-250624}"
 export STOP_TOKEN_IDS="${STOP_TOKEN_IDS:-250019,1}"
 export NOISE_MODE="${NOISE_MODE:-random_uniform}"
 
-exec "${SCRIPT_DIR}/../uno_exp/run_benchmark.sh" aime24
+exec "${SCRIPT_DIR}/../qwen/run_benchmark.sh" aime24

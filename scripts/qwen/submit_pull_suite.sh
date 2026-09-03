@@ -8,7 +8,7 @@ source "${SCRIPT_DIR}/release_model_defaults.sh"
 
 adapter_or_model="${GATED_LORA_PATH:-${MODEL}}"
 RUN_NAME="${RUN_NAME:-$(basename "${adapter_or_model}")-pull-b${DIFFUSION_BLOCK_SIZE:-16}}"
-RESULTS_ROOT="${RESULTS_ROOT:-${REPO_ROOT}/results/uno_exp}"
+RESULTS_ROOT="${RESULTS_ROOT:-${REPO_ROOT}/results/qwen}"
 NODES="${NODES:-1}"
 GPUS_PER_NODE="${GPUS_PER_NODE:-8}"
 CPUS_PER_TASK="${CPUS_PER_TASK:-8}"

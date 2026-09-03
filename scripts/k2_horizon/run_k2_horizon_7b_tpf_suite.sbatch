@@ -43,4 +43,4 @@ else
   export SKIP_GRADING=0
 fi
 
-exec "${REPO_ROOT}/scripts/linear/run_${benchmark}_linear_b8.sh"
+exec "${REPO_ROOT}/scripts/k2_horizon/run_${benchmark}_linear_b8.sh"

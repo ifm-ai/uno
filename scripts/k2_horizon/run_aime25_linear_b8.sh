@@ -2,6 +2,7 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+export RESULTS_ROOT="${RESULTS_ROOT:-${SCRIPT_DIR}/../../results/k2_horizon}"
 
 if [[ -z "${MODEL:-}" ]]; then
   MODEL="IFM/K2-Horizon-7B"
@@ -13,15 +14,15 @@ if [[ -z "${GATED_LORA_PATH:-}" ]]; then
 fi
 
 export MODEL MODEL_REVISION GATED_LORA_PATH GATED_LORA_REVISION
-export DATA="${DATA:-/mnt/weka/shrd/k2m/bbq_diff_eval/data/math500.jsonl}"
+export DATA="${DATA:-/mnt/weka/shrd/k2m/bbq_diff_eval/data/aime25.jsonl}"
 export INSTRUCTION="${INSTRUCTION-}"
 export NUM_SAMPLES=1
 export TEMPERATURE="${TEMPERATURE:-1.0}"
 export TOP_K="${TOP_K:-50}"
 export TOP_P="${TOP_P:-0.95}"
-export MAX_MODEL_LEN="${MAX_MODEL_LEN:-262144}"
-export MAX_NUM_BATCHED_TOKENS="${MAX_NUM_BATCHED_TOKENS:-262144}"
-export MAX_TOKENS="${MAX_TOKENS:-131072}"
+export MAX_MODEL_LEN="${MAX_MODEL_LEN:-500000}"
+export MAX_NUM_BATCHED_TOKENS="${MAX_NUM_BATCHED_TOKENS:-500000}"
+export MAX_TOKENS="${MAX_TOKENS:-500000}"
 export MAX_NUM_SEQS="${MAX_NUM_SEQS:-4}"
 export ATTENTION_BACKEND="${ATTENTION_BACKEND:-fa3}"
 export DIFFUSION_BLOCK_SIZE=8
@@ -31,4 +32,4 @@ export MASK_TOKEN_ID="${MASK_TOKEN_ID:-250624}"
 export STOP_TOKEN_IDS="${STOP_TOKEN_IDS:-250019,1}"
 export NOISE_MODE="${NOISE_MODE:-random_uniform}"
 
-exec "${SCRIPT_DIR}/../uno_exp/run_benchmark.sh" math500
+exec "${SCRIPT_DIR}/../qwen/run_benchmark.sh" aime25
