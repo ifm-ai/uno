@@ -325,6 +325,79 @@ class BenchmarkCompatibilityTest(unittest.TestCase):
                 ["64", "1,2,4,8,16,32,64"],
             )
 
+    def test_qwen_entrypoint_resolves_single_repo_bundle(self):
+        repository = Path(__file__).resolve().parents[1]
+        source_entrypoint = repository / "scripts" / "qwen" / "run_benchmark.sh"
+        with tempfile.TemporaryDirectory() as directory:
+            temporary = Path(directory)
+            fake_repository = temporary / "checkout"
+            qwen_directory = fake_repository / "scripts" / "qwen"
+            common_directory = fake_repository / "scripts" / "common"
+            qwen_directory.mkdir(parents=True)
+            common_directory.mkdir(parents=True)
+
+            entrypoint = qwen_directory / "run_benchmark.sh"
+            entrypoint.write_bytes(source_entrypoint.read_bytes())
+            entrypoint.chmod(0o755)
+
+            output = temporary / "environment.txt"
+            common_runner = common_directory / "run_benchmark.sh"
+            common_runner.write_text(
+                "#!/usr/bin/env bash\n"
+                "printf '%s\\n' \"$MODEL\" \"$TOKENIZER_PATH\" "
+                "\"$GATED_LORA_PATH\" \"$RUN_NAME\" "
+                "\"${MODEL_REVISION-unset}\" "
+                "\"${GATED_LORA_REVISION-unset}\" \"$1\" > \"$TEST_OUTPUT\"\n",
+                encoding="utf-8",
+            )
+            common_runner.chmod(0o755)
+
+            bundle = temporary / "bundle"
+            adapter = bundle / "adapter"
+            adapter.mkdir(parents=True)
+            for path in (
+                bundle / "config.json",
+                bundle / "model.safetensors.index.json",
+                adapter / "adapter_config.json",
+                adapter / "adapter_model.safetensors",
+            ):
+                path.touch()
+
+            fake_python = temporary / "python"
+            fake_python.write_text(
+                "#!/usr/bin/env bash\nprintf '%s\\n' \"$TEST_BUNDLE_DIR\"\n",
+                encoding="utf-8",
+            )
+            fake_python.chmod(0o755)
+
+            subprocess.run(
+                [str(entrypoint), "gsm8k"],
+                check=True,
+                env={
+                    **os.environ,
+                    "PYTHON": str(fake_python),
+                    "UNO_BUNDLE_REPO": "s-sahoo/uno-qwen3-8B",
+                    "UNO_BUNDLE_REVISION": "bundle-sha",
+                    "TEST_BUNDLE_DIR": str(bundle),
+                    "TEST_OUTPUT": str(output),
+                    "MODEL_REVISION": "stale-base-sha",
+                    "TOKENIZER_PATH": "stale-tokenizer",
+                    "GATED_LORA_REVISION": "stale-adapter-sha",
+                },
+            )
+            self.assertEqual(
+                output.read_text(encoding="utf-8").splitlines(),
+                [
+                    str(bundle),
+                    str(bundle),
+                    str(adapter),
+                    "uno-qwen3-8B",
+                    "unset",
+                    "unset",
+                    "gsm8k",
+                ],
+            )
+
     def test_uniform_noise_matches_training_token_range(self):
         params = SamplingParams(
             diffusion_block_size=8,
