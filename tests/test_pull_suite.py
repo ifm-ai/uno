@@ -7,8 +7,8 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from nano_vllm_uno.eval.benchmarks import BenchmarkConfig
-from nano_vllm_uno.pull_suite import (
+from evaluation.benchmarks import BenchmarkConfig
+from evaluation.pull_suite import (
     SuiteSettings,
     _aggregate_rows,
     _cuda_graph_batch_ladder,
@@ -143,7 +143,7 @@ class PullSuiteTest(unittest.TestCase):
                 data_path=data,
             )
             settings = self.make_settings(root)
-            with patch.dict("nano_vllm_uno.pull_suite.BENCHMARKS", {"smoke": config}, clear=True):
+            with patch.dict("evaluation.pull_suite.BENCHMARKS", {"smoke": config}, clear=True):
                 suite = prepare_suite(settings, FakeTokenizer())
 
             self.assertEqual(len(suite.jobs), 1)
@@ -182,7 +182,7 @@ class PullSuiteTest(unittest.TestCase):
                 tokenizer=object(),
             )
             with patch(
-                "nano_vllm_uno.pull_suite.resolve_model_token_ids",
+                "evaluation.pull_suite.resolve_model_token_ids",
                 return_value=(12, [13, 14], 20),
             ) as resolve:
                 result = _resolve_worker_model_token_ids(engine, settings)
@@ -214,7 +214,7 @@ class PullSuiteTest(unittest.TestCase):
                 data_path=data,
             )
             settings = self.make_settings(root)
-            with patch.dict("nano_vllm_uno.pull_suite.BENCHMARKS", {"smoke": config}, clear=True):
+            with patch.dict("evaluation.pull_suite.BENCHMARKS", {"smoke": config}, clear=True):
                 suite = prepare_suite(settings, FakeTokenizer())
                 manifest = build_manifest(
                     settings,

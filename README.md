@@ -1,21 +1,26 @@
-# [Uno](https://github.com/ifm-ai/uno)
+# Uno
 
-[![Uno](https://img.shields.io/badge/Hugging%20Face-Uno-FFD21E?logo=huggingface&logoColor=000)](https://huggingface.co/IFM/K2-Horizon-7B-Uno)
-[![Uno-Qwen](https://img.shields.io/badge/Hugging%20Face-Uno%20Qwen-FFD21E?logo=huggingface&logoColor=000)](https://huggingface.co/s-sahoo/uno-qwen3-8B)
-[![License](https://img.shields.io/badge/License-Apache--2.0-2F80ED.svg)](LICENSE)
+Uno combines an autoregressive base model with a conditional LoRA diffusion
+path and provides linear and tree speculative samplers.
 
-We present UNO, a diffusion-augmented LLM with two pathways in a unified architecture:
-- The AR pathway uses the base AR weights.
-- The diffusion pathway combines these weights with LoRA-based diffusion adapters.
+## Repository layout
 
-In this repository, we provide:
-- `Uno` Training Pipeline
-   - AR weights initialized from `Qwen3-8B`,
-   - Diffusion weights trained on `OpenThoughts` using a progressive block-size curriculum.
-- $\Psi$-spec samplers
-  - `Linear` Sampler
-  - `Tree` Sampler
-# Getting Started
+```text
+nano_vllm_uno/       Inference engine
+generation.py        Generation shared by free inference and evaluation
+inference.py         Free-form prompt inference
+evaluation/          Benchmark data, generation, grading, and Slurm launchers
+training/            Qwen Uno LoRA training and training configuration
+examples/            Model-specific, directly executable recipes
+tests/               Engine and workflow tests
+```
+
+The engine is model-agnostic at its public boundary. Model-specific defaults
+live only in the three example directories:
+
+- `examples/uno_qwen3_8B`: `s-sahoo/uno-qwen3-8B`
+- `examples/uno_8B`: `IFM/K2-Horizon-7B-Uno`
+- `examples/uno_1B`: `IFM/K2-Horizon-0.9B-Uno`
 
 ## Installation
 
@@ -30,187 +35,103 @@ python -m pip install \
 python -m pip install -e '.[eval,train]'
 ```
 
-The installation above uses FlashAttention-2 (FA2) and supports linear decoding.
-Tree verification additionally requires FlashAttention-3 (FA3), installed in
-the same environment:
+Linear decoding uses FlashAttention-2. Tree verification additionally requires
+FlashAttention-3 from `flash-attention/hopper`.
+
+## Inference
+
+Each model recipe calls the same top-level `inference.py` implementation:
 
 ```bash
-python -m pip install ninja==1.13.0
-git clone --depth 1 --branch v2.8.3 \
-  https://github.com/Dao-AILab/flash-attention.git
-cd flash-attention/hopper
-MAX_JOBS=16 python -m pip install --no-build-isolation .
+bash examples/uno_qwen3_8B/run_inference.sh --prompt "Solve 2 + 2."
+bash examples/uno_8B/run_inference.sh --prompt "Solve 2 + 2."
+bash examples/uno_1B/run_inference.sh --prompt "Solve 2 + 2."
 ```
 
-## Preparation
-
-Accept the terms for the gated
-[GPQA dataset](https://huggingface.co/datasets/Idavidrein/gpqa), then
-authenticate with Hugging Face:
+Sampling parameters can be overridden at the command line:
 
 ```bash
-hf auth login
+bash examples/uno_8B/run_inference.sh \
+  --prompt "Solve 2 + 2." \
+  --diffusion-block-size 16 \
+  --tree-candidate-top-k 32 \
+  --tree-verify-size 32 \
+  --attention-backend fa3
 ```
 
-The evaluation launcher automatically downloads and prepares any missing data
-from pinned public sources. To prepare all 12 benchmarks in advance, run:
+## Evaluation
+
+Prepare public benchmark data when desired; individual evaluation runs also
+prepare missing data lazily:
 
 ```bash
-export HF_HOME=/path/to/shared/hf-cache
-export UNO_EVAL_DATA_DIR=/path/to/shared/uno-eval-data
-python scripts/qwen/prepare_benchmark_data.py
+python -m evaluation.prepare_data gsm8k math500
 ```
 
-The suite contains GSM8K, MATH500, AIME 2024--2026, HumanEval, MBPP,
-LiveCodeBench v6, GPQA, GPQA-Diamond, MMLU-Pro, and IFEval.
-
-> [!WARNING]
-> HumanEval, MBPP, and LiveCodeBench grading execute model-generated Python.
-> Run coding evaluations only in an isolated, secure sandbox.
-
-Training requires an explicitly prepared copy of the pinned
-OpenThoughts3-1.2M corpus:
+Run the same benchmark workflow for any supported release:
 
 ```bash
-python -m nano_vllm_uno.training.prepare_openthoughts \
-  --output /path/to/shared/openthoughts-uno-4095 \
-  --cache-dir /path/to/shared/hf-cache \
+bash examples/uno_qwen3_8B/run_eval.sh gsm8k
+bash examples/uno_8B/run_eval.sh gsm8k
+bash examples/uno_1B/run_eval.sh gsm8k
+```
+
+Every run writes `generations.jsonl`, `generation_summary.json`, `grades.jsonl`,
+and `scores.json`. The summary includes output tokens per second and decoder
+tokens per sequence forward (TPF).
+
+The built-in suite includes GSM8K, MATH500, AIME 2024--2026, HumanEval, MBPP,
+LiveCodeBench v6, GPQA, GPQA-Diamond, MMLU-Pro, IFEval, and AA-LCR. AA-LCR uses
+an OpenAI-compatible external judge and caller-supplied JSONL data via `--data`.
+It requires:
+
+```bash
+export UNO_LCR_JUDGE_URL=http://judge-host:8000/v1
+export UNO_LCR_JUDGE_MODEL=judge-model-name
+export UNO_LCR_JUDGE_API_KEY=optional-token
+```
+
+Code benchmark graders execute model-generated Python. Run them only in an
+isolated environment.
+
+For Slurm, `MODEL_EXAMPLE` selects one of the three example directories:
+
+```bash
+MODEL_EXAMPLE=uno_8B BENCHMARKS="gsm8k math500" \
+  bash evaluation/submit_suite.sh
+```
+
+## Training
+
+The published training implementation is the Qwen Uno LoRA recipe. K2 releases
+currently provide inference and evaluation only.
+
+Prepare the pinned OpenThoughts corpus:
+
+```bash
+python -m training.prepare_openthoughts \
+  --output /path/to/openthoughts-uno-4095 \
+  --cache-dir /path/to/hf-cache \
   --num-proc 32
 ```
 
-## Checkpoints
-
-- [s-sahoo/uno-qwen3-8B](https://huggingface.co/s-sahoo/uno-qwen3-8B)
-
-Model-specific launchers are organized under `scripts/qwen` and
-`scripts/k2_horizon`. The Qwen directory contains the complete generic
-evaluation suite; the K2 Horizon directory contains the K2 model defaults and
-linear-throughput wrappers. Both delegate to the shared entry point in
-`scripts/common`.
-
-# Inference
-
-## Linear Sampler (System Throughput optimal)
-
-The default pull-based evaluation runs all 12 benchmarks using one persistent
-TP=1 worker per GPU. It uses one eight-GPU node, block size `B=16`, a
-32,768-token request-level context budget, temperature 1, top-p 0.95, top-k 50,
-and up to 64 active sequences per GPU:
+Launch the default curriculum on Slurm:
 
 ```bash
-RESULTS_ROOT=/path/to/shared/results \
-HF_CACHE_DIR=/path/to/shared/hf-cache \
-ATTENTION_BACKEND=fa2 \
-SBATCH_ARGS="--account=my-account --partition=my-partition" \
-bash scripts/qwen/submit_pull_suite.sh
-```
-
-The launcher prepares missing data, grades every benchmark, and writes
-generations, scores, resolved settings, per-sequence forward counts, and
-aggregate TPF under `${RESULTS_ROOT}/${RUN_NAME}`. Useful overrides include
-`RUN_NAME`, `BENCHMARKS`, `LIMIT`, `NUM_SAMPLES`, `DIFFUSION_BLOCK_SIZE`,
-`MAX_NUM_SEQS`, `MODEL`, and `GATED_LORA_PATH`.
-
-To submit benchmarks independently instead, use the per-benchmark script:
-
-```bash
-RESULTS_ROOT=/path/to/shared/results \
-HF_CACHE_DIR=/path/to/shared/hf-cache \
-BENCHMARKS="aime24 humaneval" \
-SBATCH_ARGS="--account=my-account --partition=my-partition" \
-bash scripts/qwen/submit_benchmark_suite.sh
-```
-
-## Tree Sampler (Per-request Throughput Optimal)
-
-Install FA3 as described above, then launch the paper tree configuration with
-block size `B=16`, verification budget `V=60`, and candidate top-k 32:
-
-```bash
-RESULTS_ROOT=/path/to/shared/results \
-HF_CACHE_DIR=/path/to/shared/hf-cache \
-ATTENTION_BACKEND=fa3 \
-DIFFUSION_BLOCK_SIZE=16 \
-TREE_VERIFY_SIZE=60 \
-TREE_CANDIDATE_TOP_K=32 \
-TORCH_COMPILE=0 \
-SBATCH_ARGS="--account=my-account --partition=my-partition" \
-bash scripts/qwen/submit_pull_suite.sh
-```
-
-# Training 
-
-Training is LoRA-only. W&B logging is enabled by default, so run
-`wandb login` first or set `WANDB_MODE=disabled`.
-
-After preparing OpenThoughts (as outlined above), launch the default two-node, 16-GPU, three-epoch block-curriculum training:
-
-```bash
-DATASET_PATH=/path/to/shared/openthoughts-uno-4095 \
-TRAIN_STORAGE_ROOT=/path/to/shared/uno-training \
+DATASET_PATH=/path/to/openthoughts-uno-4095 \
+TRAIN_STORAGE_ROOT=/path/to/training-storage \
 SLURM_ACCOUNT=my-account \
 SLURM_PARTITION=my-partition \
-bash scripts/train_uno_3epoch_slurm.sh
+  bash examples/uno_qwen3_8B/run_train.sh
 ```
 
-The training schedule runs for half an epoch at each value of `B`: `2`, `4`, `6`, `8`, `12`, and `16`.
-
-### Training configuration
-
-- Global batch size: `128`
-- Learning rate: `1e-5`
-- Warmup: `562` steps, or 2% of training
-- Learning-rate decay: disabled to simplify continued fine-tuning
-
-### LoRA configuration
-
-A rank-128 LoRA adapter is applied to the Q, K, V, O, and MLP gate, up, and down projections, with an alpha of `2048`.
-
-The following overrides are available:
-
-- `LORA_RANK`
-- `LORA_ALPHA`
-- `LORA_TARGET`
-
-If `LORA_ALPHA` is omitted, it defaults to `16 * LORA_RANK`.
-
-`LORA_TARGET` accepts:
-
-- `all`, the default
-- Attention projection combinations such as `o`, `q`, `qk`, or `qkvo`
-- Explicit comma-separated projection names
-
-### Training objective
-
-The default objective is TV-only:
-
-- CE weight: `CE_ALPHA=0`
-- Reverse-KL weight: `KL_BETA=0`
-- TV weight: `TV_GAMMA=1`
-
-When `CE_ALPHA` is positive, `CE_TARGET` selects the labels used for the CE objective. For example, set `CE_TARGET=ground_truth` to use ground-truth labels.
-
-### Additional overrides
-
-Other useful overrides include `WANDB_MODE` and the Slurm hardware variables.
-
-To resume from a curriculum boundary, set `RESUME_FROM_CHECKPOINT` and retain the original `RUN_NAME`.
+Training configuration is colocated under `training/configs/`. The default
+recipe uses LoRA rank 128, alpha 2048, global batch size 128, learning rate
+`1e-5`, and a B2/B4/B6/B8/B12/B16 curriculum.
 
 ## Acknowledgements
 
-Uno's runtime builds on
-[Nano-vLLM](https://github.com/GeeeekExplorer/nano-vllm), and its
-training utilities are adapted from
-[LlamaFactory](https://github.com/hiyouga/LlamaFactory). See [NOTICE](NOTICE)
-for the corresponding attribution and license notices.
-
-## Citation
-
-```bibtex
-@article{uno2026,
-  title   = {},
-  author  = {},
-  journal = {},
-  year    = {2026}
-}
-```
+The runtime builds on [Nano-vLLM](https://github.com/GeeeekExplorer/nano-vllm).
+Training utilities are adapted from
+[LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory). See `NOTICE` for
+license and attribution details.

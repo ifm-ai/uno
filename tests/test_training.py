@@ -10,33 +10,33 @@ from unittest.mock import patch
 import torch
 import torch.nn.functional as F
 
-from nano_vllm_uno.training.config import LoraSettings, UnoObjectiveConfig
-from nano_vllm_uno.training.constants import DEFAULT_LORA_ALPHA, DEFAULT_LORA_RANK
-from nano_vllm_uno.training.curriculum import BlockCurriculumPlan
-from nano_vllm_uno.training.create_fixed_curriculum import build_fixed_curriculum
-from nano_vllm_uno.training.data import (
+from training.config import LoraSettings, UnoObjectiveConfig
+from training.constants import DEFAULT_LORA_ALPHA, DEFAULT_LORA_RANK
+from training.curriculum import BlockCurriculumPlan
+from training.create_fixed_curriculum import build_fixed_curriculum
+from training.data import (
     UnoDataCollator,
     content_hash_rows,
     encode_qwen3_sharegpt_example,
     infer_sequence_lengths,
 )
-from nano_vllm_uno.training.lora import (
+from training.lora import (
     TokenwiseLoraRouter,
     make_saved_adapter_portable,
     resolve_lora_targets,
 )
-from nano_vllm_uno.training.losses import (
+from training.losses import (
     resolve_ce_targets,
     token_normalized_reverse_kl,
     token_normalized_total_variation,
 )
-from nano_vllm_uno.training.modeling import configure_uniform_noise_config
-from nano_vllm_uno.training.train import (
+from training.modeling import configure_uniform_noise_config
+from training.train import (
     _load_base_model,
     _resolve_model_snapshot,
     build_parser,
 )
-from nano_vllm_uno.training.trainer import combine_objective_losses
+from training.trainer import combine_objective_losses
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -57,7 +57,7 @@ class RecordingTokenizer:
 
 
 class ModelResolutionTest(unittest.TestCase):
-    @patch("nano_vllm_uno.training.train.snapshot_download")
+    @patch("training.train.snapshot_download")
     def test_resolves_the_pinned_model_revision_to_a_local_snapshot(self, download):
         download.return_value = "/cache/resolved-snapshot"
         result = _resolve_model_snapshot(
@@ -66,15 +66,15 @@ class ModelResolutionTest(unittest.TestCase):
         )
         self.assertEqual(result, Path("/cache/resolved-snapshot"))
         download.assert_called_once_with(
-            repo_id="IFM/uno-qwen3-8b-base",
-            revision="4ccfeed3fba497e40495fe6dc5c15c89f7f1e2cd",
+            repo_id="s-sahoo/uno-qwen3-8B",
+            revision="b8a7577b3223bdcf2b3af0f2fc6e95258b3bbc29",
             cache_dir="/cache",
             local_files_only=True,
         )
 
-    @patch("nano_vllm_uno.training.train.AutoModelForCausalLM.from_pretrained")
-    @patch("nano_vllm_uno.training.train.AutoConfig.from_pretrained")
-    @patch("nano_vllm_uno.training.train.AutoTokenizer.from_pretrained")
+    @patch("training.train.AutoModelForCausalLM.from_pretrained")
+    @patch("training.train.AutoConfig.from_pretrained")
+    @patch("training.train.AutoTokenizer.from_pretrained")
     def test_all_transformers_loaders_use_the_resolved_local_snapshot(
         self,
         load_tokenizer,
@@ -158,7 +158,7 @@ class PreprocessingTest(unittest.TestCase):
     def test_reference_hash_accepts_train_dataset_dict(self):
         from datasets import Dataset, DatasetDict
 
-        from nano_vllm_uno.training.prepare_openthoughts import _reference_hash
+        from training.prepare_openthoughts import _reference_hash
 
         rows = [
             {"input_ids": [1, 2], "attention_mask": [1, 1], "labels": [-100, 2]},
@@ -261,13 +261,13 @@ class LoraTest(unittest.TestCase):
             make_saved_adapter_portable(adapter)
 
             config = json.loads((adapter / "adapter_config.json").read_text())
-            self.assertEqual(config["base_model_name_or_path"], "IFM/uno-qwen3-8b-base")
+            self.assertEqual(config["base_model_name_or_path"], "s-sahoo/uno-qwen3-8B")
             self.assertEqual(
                 config["revision"],
-                "4ccfeed3fba497e40495fe6dc5c15c89f7f1e2cd",
+                "b8a7577b3223bdcf2b3af0f2fc6e95258b3bbc29",
             )
             self.assertIn(
-                "base_model: IFM/uno-qwen3-8b-base",
+                "base_model: s-sahoo/uno-qwen3-8B",
                 (adapter / "README.md").read_text(),
             )
 
@@ -318,7 +318,7 @@ class CurriculumTest(unittest.TestCase):
 
     def test_default_six_stage_boundaries(self):
         plan = BlockCurriculumPlan.from_yaml(
-            ROOT / "configs/training/uno_3epoch_curriculum.yaml"
+            ROOT / "training/configs/uno_3epoch_curriculum.yaml"
         )
         self.assertEqual(plan.max_steps, 28125)
         self.assertEqual(
@@ -355,9 +355,9 @@ class LauncherTest(unittest.TestCase):
         self.assertIsNone(args.lora_alpha)
 
     def test_multinode_launcher_uses_shared_repository_path(self):
-        launcher = (ROOT / "scripts" / "train_uno_slurm.sh").read_text()
+        launcher = (ROOT / "training" / "run_slurm.sh").read_text()
         self.assertIn(
-            'LAUNCHER_PATH="${REPO_ROOT}/scripts/train_uno_slurm.sh"',
+            'LAUNCHER_PATH="${REPO_ROOT}/training/run_slurm.sh"',
             launcher,
         )
         self.assertIn('if [[ -n "${UNO_REPO_ROOT:-}" ]]', launcher)
@@ -376,18 +376,18 @@ class LauncherTest(unittest.TestCase):
         )
 
     def test_schedule_wrappers_delegate_to_generic_launcher(self):
-        three_epoch = (ROOT / "scripts" / "train_uno_3epoch_slurm.sh").read_text()
-        fixed_b8 = (ROOT / "scripts" / "train_uno_b8_slurm.sh").read_text()
-        self.assertIn("configs/training/uno_3epoch_curriculum.yaml", three_epoch)
-        self.assertIn('scripts/train_uno_slurm.sh"', three_epoch)
-        self.assertIn('scripts/train_uno_slurm.sh"', fixed_b8)
+        three_epoch = (ROOT / "examples" / "uno_qwen3_8B" / "run_train.sh").read_text()
+        fixed_b8 = (ROOT / "training" / "run_fixed_b8_slurm.sh").read_text()
+        self.assertIn("training/configs/uno_3epoch_curriculum.yaml", three_epoch)
+        self.assertIn('training/run_slurm.sh"', three_epoch)
+        self.assertIn('training/run_slurm.sh"', fixed_b8)
 
     def test_batch_spool_copy_preserves_shared_repository_path(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             spool_copy = root / "slurm_script"
             spool_copy.write_text(
-                (ROOT / "scripts" / "train_uno_slurm.sh").read_text()
+                (ROOT / "training" / "run_slurm.sh").read_text()
             )
 
             dataset = root / "dataset"
@@ -416,7 +416,7 @@ class LauncherTest(unittest.TestCase):
                     "DATASET_PATH": str(dataset),
                     "TRAIN_STORAGE_ROOT": str(storage),
                     "CURRICULUM_PATH": str(
-                        ROOT / "configs" / "training" / "uno_3epoch_curriculum.yaml"
+                        ROOT / "training" / "configs" / "uno_3epoch_curriculum.yaml"
                     ),
                     "SLURM_JOB_ID": "123",
                     "SLURM_JOB_NODELIST": "fake",
@@ -438,7 +438,7 @@ class LauncherTest(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             launched = commands.read_text()
             self.assertIn(
-                f"bash {ROOT}/scripts/train_uno_slurm.sh",
+                f"bash {ROOT}/training/run_slurm.sh",
                 launched,
             )
             self.assertNotIn(str(root / "scripts"), launched)
@@ -448,7 +448,7 @@ class LauncherTest(unittest.TestCase):
             root = Path(directory)
             spool_copy = root / "slurm_script"
             spool_copy.write_text(
-                (ROOT / "scripts" / "train_uno_slurm.sh").read_text()
+                (ROOT / "training" / "run_slurm.sh").read_text()
             )
             command_log = root / "worker.log"
             fake_python = root / "python"
@@ -471,7 +471,7 @@ class LauncherTest(unittest.TestCase):
                     "DATASET_PATH": str(root / "dataset"),
                     "TRAIN_STORAGE_ROOT": str(root / "training"),
                     "CURRICULUM_PATH": str(
-                        ROOT / "configs" / "training" / "uno_3epoch_curriculum.yaml"
+                        ROOT / "training" / "configs" / "uno_3epoch_curriculum.yaml"
                     ),
                     "SLURM_JOB_ID": "123",
                     "SLURM_NNODES": "1",

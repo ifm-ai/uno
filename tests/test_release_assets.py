@@ -12,8 +12,8 @@ from unittest.mock import patch
 import torch
 
 from nano_vllm_uno.config import Config
-from nano_vllm_uno.eval.benchmarks import BENCHMARKS, DEFAULT_DATA_ROOT
-from nano_vllm_uno.eval.data import (
+from evaluation.benchmarks import BENCHMARKS, DEFAULT_DATA_ROOT
+from evaluation.data import (
     prepare_gpqa_diamond,
     prepare_humaneval,
     prepare_ifeval,
@@ -104,9 +104,8 @@ class PublicDatasetBuilderTest(unittest.TestCase):
     def test_prepare_cli_accepts_omitted_benchmarks_as_all(self):
         script = (
             Path(__file__).resolve().parents[1]
-            / "scripts"
-            / "qwen"
-            / "prepare_benchmark_data.py"
+            / "evaluation"
+            / "prepare_data.py"
         )
         parse_args = runpy.run_path(str(script))["parse_args"]
 
@@ -128,7 +127,7 @@ class PublicDatasetBuilderTest(unittest.TestCase):
             "entry_point": "add",
         }
         with patch(
-            "nano_vllm_uno.eval.data._load_dataset",
+            "evaluation.data._load_dataset",
             return_value=[source],
         ):
             record = prepare_humaneval()[0]
@@ -148,7 +147,7 @@ class PublicDatasetBuilderTest(unittest.TestCase):
             "Incorrect Answer 3": "Wrong three",
         }
         with patch(
-            "nano_vllm_uno.eval.data._load_dataset",
+            "evaluation.data._load_dataset",
             return_value=[source],
         ) as load:
             records = prepare_gpqa_diamond()
@@ -175,7 +174,7 @@ class PublicDatasetBuilderTest(unittest.TestCase):
             ],
         }
         with patch(
-            "nano_vllm_uno.eval.data._load_dataset",
+            "evaluation.data._load_dataset",
             return_value=[source],
         ) as load:
             records = prepare_ifeval()
@@ -210,7 +209,7 @@ class PublicDatasetBuilderTest(unittest.TestCase):
             path = Path(directory) / "test6.jsonl"
             path.write_text(json.dumps(source) + "\n", encoding="utf-8")
             with patch(
-                "nano_vllm_uno.eval.data.hf_hub_download",
+                "evaluation.data.hf_hub_download",
                 return_value=str(path),
             ):
                 record = prepare_lcbv6()[0]

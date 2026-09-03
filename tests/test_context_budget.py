@@ -2,7 +2,7 @@ import unittest
 
 from nano_vllm_uno.engine.sequence import Sequence
 from nano_vllm_uno.engine.two_pass_decoding import TwoPassDecoder
-from nano_vllm_uno.eval.context_budget import (
+from nano_vllm_uno.utils.context_budget import (
     active_forward_reserve,
     resolve_completion_budget,
 )

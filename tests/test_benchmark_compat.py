@@ -12,17 +12,18 @@ import torch
 
 from nano_vllm_uno.engine.noise import _noise_bounds
 from nano_vllm_uno.engine.llm_engine import _trim_terminal_stop_tokens
-from nano_vllm_uno.eval.benchmarks import BENCHMARKS
-from nano_vllm_uno.eval.code_grader import grade_humaneval_row
-from nano_vllm_uno.eval.lcb_grader import score_lcbv6
-from nano_vllm_uno.eval.model_tokens import resolve_model_token_ids
-from nano_vllm_uno.eval.parsers import (
+from evaluation.benchmarks import BENCHMARKS
+from evaluation.graders.code import grade_humaneval_row
+from evaluation.graders.lcb import score_lcbv6
+from nano_vllm_uno.utils.model_tokens import resolve_model_token_ids
+from evaluation.parsers import (
     parse_code_completion,
     parse_gpqa_answer,
 )
 from nano_vllm_uno.layers.sampler import build_sparse_top_k_probs
 from nano_vllm_uno.sampling_params import SamplingParams
-from nano_vllm_uno.eval.generate_benchmark import format_prompt
+from evaluation.run import format_prompt
+from generation import resolve_model_sources
 
 
 class BenchmarkCompatibilityTest(unittest.TestCase):
@@ -63,7 +64,7 @@ class BenchmarkCompatibilityTest(unittest.TestCase):
         self.assertEqual(messages, [{"role": "user", "content": "test"}])
         self.assertFalse(tokenizer.tokenize_kwargs["return_dict"])
 
-    def test_canonical_suite_contains_all_twelve_benchmarks(self):
+    def test_canonical_suite_contains_all_thirteen_benchmarks(self):
         self.assertEqual(
             tuple(BENCHMARKS),
             (
@@ -88,30 +89,14 @@ class BenchmarkCompatibilityTest(unittest.TestCase):
         )
 
     def test_canonical_suite_has_a_launcher_for_every_benchmark(self):
-        scripts = Path(__file__).resolve().parents[1] / "scripts" / "qwen"
-        wrappers = {
-            "gsm8k": "run_gsm8k_eval.sh",
-            "math500": "run_math500_eval.sh",
-            "aime24": "run_aime24_eval.sh",
-            "aime25": "run_aime25_eval.sh",
-            "aime26": "run_aime26_eval.sh",
-            "humaneval": "run_humaneval_eval.sh",
-            "mbpp": "run_mbpp_eval.sh",
-            "lcbv6": "run_lcbv6_eval.sh",
-            "gpqa": "run_gpqa_eval.sh",
-            "gpqa_diamond": "run_gpqa_diamond_eval.sh",
-            "mmlu_pro": "run_mmlu_pro_eval.sh",
-            "ifeval": "run_ifeval_eval.sh",
-            "lcr": "run_lcr_eval.sh",
-        }
-        self.assertEqual(set(wrappers), set(BENCHMARKS))
-        self.assertTrue(
-            all((scripts / wrapper).is_file() for wrapper in wrappers.values())
-        )
+        examples = Path(__file__).resolve().parents[1] / "examples"
+        for model in ("uno_qwen3_8B", "uno_8B", "uno_1B"):
+            self.assertTrue((examples / model / "run_eval.sh").is_file())
+            self.assertTrue((examples / model / "run_inference.sh").is_file())
 
     def test_per_benchmark_launcher_forwards_attention_backend(self):
         repository = Path(__file__).resolve().parents[1]
-        runner = repository / "scripts" / "qwen" / "run_benchmark.sh"
+        runner = repository / "examples" / "uno_qwen3_8B" / "run_eval.sh"
         with tempfile.TemporaryDirectory() as directory:
             temporary = Path(directory)
             fake_python = temporary / "python"
@@ -131,7 +116,6 @@ class BenchmarkCompatibilityTest(unittest.TestCase):
                     "RESULTS_ROOT": str(temporary / "results"),
                     "RUN_NAME": "launcher-test",
                     "ATTENTION_BACKEND": "fa2",
-                    "SKIP_GRADING": "1",
                 },
             )
             arguments = output.read_text(encoding="utf-8").splitlines()
@@ -140,17 +124,14 @@ class BenchmarkCompatibilityTest(unittest.TestCase):
 
     def test_model_entrypoints_delegate_to_shared_runner(self):
         repository = Path(__file__).resolve().parents[1]
-        for family in ("qwen", "k2_horizon"):
-            entrypoint = repository / "scripts" / family / "run_benchmark.sh"
-            self.assertTrue(entrypoint.is_file())
-            self.assertIn(
-                'exec "${SCRIPT_DIR}/../common/run_benchmark.sh" "$@"',
-                entrypoint.read_text(encoding="utf-8"),
-            )
+        for model in ("uno_qwen3_8B", "uno_8B", "uno_1B"):
+            directory = repository / "examples" / model
+            self.assertIn("evaluation.run", (directory / "run_eval.sh").read_text())
+            self.assertIn("inference.py", (directory / "run_inference.sh").read_text())
 
     def test_k2_horizon_linear_wrappers_match_reference_protocol(self):
         repository = Path(__file__).resolve().parents[1]
-        scripts = repository / "scripts" / "k2_horizon"
+        runner = repository / "examples" / "uno_8B" / "run_eval.sh"
         cases = {
             "gsm8k": (262144, 131072),
             "math500": (262144, 131072),
@@ -170,9 +151,8 @@ class BenchmarkCompatibilityTest(unittest.TestCase):
 
             for benchmark, (context, max_tokens) in cases.items():
                 output = temporary / f"{benchmark}.arguments"
-                wrapper = scripts / f"run_{benchmark}_linear_b8.sh"
                 subprocess.run(
-                    [str(wrapper)],
+                    [str(runner), benchmark],
                     check=True,
                     env={
                         **os.environ,
@@ -181,9 +161,6 @@ class BenchmarkCompatibilityTest(unittest.TestCase):
                         "RESULTS_ROOT": str(temporary / "results"),
                         "MODEL": "test-k2-base",
                         "GATED_LORA_PATH": "test-k2-adapter",
-                        "MODEL_REVISION": "",
-                        "GATED_LORA_REVISION": "",
-                        "SKIP_GRADING": "1",
                     },
                 )
                 arguments = output.read_text(encoding="utf-8").splitlines()
@@ -194,7 +171,6 @@ class BenchmarkCompatibilityTest(unittest.TestCase):
 
                 self.assertEqual(value("--benchmark"), benchmark)
                 self.assertEqual(value("--data-parallel-size"), "8")
-                self.assertEqual(value("--tensor-parallel-size"), "1")
                 self.assertEqual(value("--max-num-seqs"), "4")
                 self.assertEqual(value("--max-model-len"), str(context))
                 self.assertEqual(value("--max-num-batched-tokens"), str(context))
@@ -205,9 +181,6 @@ class BenchmarkCompatibilityTest(unittest.TestCase):
                 self.assertEqual(value("--top-p"), "0.95")
                 self.assertEqual(value("--attention-backend"), "fa3")
                 self.assertEqual(value("--diffusion-block-size"), "8")
-                self.assertEqual(value("--cuda-graph-block-sizes"), "1,8")
-                self.assertEqual(value("--cuda-graph-batch-sizes"), "1,2,4")
-                self.assertEqual(value("--noise-mode"), "random_uniform")
                 self.assertEqual(value("--mask-token-id"), "250624")
                 self.assertEqual(value("--stop-token-ids"), "250019,1")
                 self.assertEqual(value("--instruction"), "")
@@ -220,18 +193,17 @@ class BenchmarkCompatibilityTest(unittest.TestCase):
         repository = Path(__file__).resolve().parents[1]
         source_wrapper = (
             repository
-            / "scripts"
-            / "qwen"
-            / "run_benchmark_slurm.sh"
+            / "evaluation"
+            / "run_slurm.sh"
         )
         with tempfile.TemporaryDirectory() as directory:
             temporary = Path(directory)
             fake_repository = temporary / "checkout"
             runner = (
                 fake_repository
-                / "scripts"
-                / "qwen"
-                / "run_benchmark.sh"
+                / "examples"
+                / "uno_qwen3_8B"
+                / "run_eval.sh"
             )
             runner.parent.mkdir(parents=True)
             runner.write_text(
@@ -250,6 +222,7 @@ class BenchmarkCompatibilityTest(unittest.TestCase):
                 env={
                     **os.environ,
                     "NANO_VLLM_UNO_REPO_ROOT": str(fake_repository),
+                    "MODEL_EXAMPLE": "uno_qwen3_8B",
                     "TEST_OUTPUT": str(output),
                 },
             )
@@ -259,30 +232,13 @@ class BenchmarkCompatibilityTest(unittest.TestCase):
         repository = Path(__file__).resolve().parents[1]
         source_wrapper = (
             repository
-            / "scripts"
-            / "qwen"
+            / "evaluation"
             / "run_pull_suite_slurm.sh"
         )
         with tempfile.TemporaryDirectory() as directory:
             temporary = Path(directory)
             fake_repository = temporary / "checkout"
-            script_directory = fake_repository / "scripts" / "qwen"
-            common_directory = fake_repository / "scripts" / "common"
-            script_directory.mkdir(parents=True)
-            common_directory.mkdir(parents=True)
-            (script_directory / "release_model_defaults.sh").write_text(
-                "MODEL=fake-model\nGATED_LORA_PATH=\n"
-                "export MODEL GATED_LORA_PATH\n",
-                encoding="utf-8",
-            )
-            (common_directory / "eval_defaults.sh").write_bytes(
-                (
-                    repository
-                    / "scripts"
-                    / "common"
-                    / "eval_defaults.sh"
-                ).read_bytes()
-            )
+            (fake_repository / "evaluation").mkdir(parents=True)
 
             fake_bin = temporary / "bin"
             fake_bin.mkdir()
@@ -310,6 +266,8 @@ class BenchmarkCompatibilityTest(unittest.TestCase):
                     **os.environ,
                     "PATH": f"{fake_bin}:{os.environ['PATH']}",
                     "NANO_VLLM_UNO_REPO_ROOT": str(fake_repository),
+                    "MODEL": "fake-model",
+                    "GATED_LORA_PATH": "",
                     "RESULTS_ROOT": str(temporary / "results"),
                     "RUN_NAME": "copied-wrapper-test",
                     "SLURM_JOB_ID": "123",
@@ -326,77 +284,21 @@ class BenchmarkCompatibilityTest(unittest.TestCase):
             )
 
     def test_qwen_entrypoint_resolves_single_repo_bundle(self):
-        repository = Path(__file__).resolve().parents[1]
-        source_entrypoint = repository / "scripts" / "qwen" / "run_benchmark.sh"
         with tempfile.TemporaryDirectory() as directory:
             temporary = Path(directory)
-            fake_repository = temporary / "checkout"
-            qwen_directory = fake_repository / "scripts" / "qwen"
-            common_directory = fake_repository / "scripts" / "common"
-            qwen_directory.mkdir(parents=True)
-            common_directory.mkdir(parents=True)
-
-            entrypoint = qwen_directory / "run_benchmark.sh"
-            entrypoint.write_bytes(source_entrypoint.read_bytes())
-            entrypoint.chmod(0o755)
-
-            output = temporary / "environment.txt"
-            common_runner = common_directory / "run_benchmark.sh"
-            common_runner.write_text(
-                "#!/usr/bin/env bash\n"
-                "printf '%s\\n' \"$MODEL\" \"$TOKENIZER_PATH\" "
-                "\"$GATED_LORA_PATH\" \"$RUN_NAME\" "
-                "\"${MODEL_REVISION-unset}\" "
-                "\"${GATED_LORA_REVISION-unset}\" \"$1\" > \"$TEST_OUTPUT\"\n",
-                encoding="utf-8",
-            )
-            common_runner.chmod(0o755)
-
             bundle = temporary / "bundle"
             adapter = bundle / "adapter"
             adapter.mkdir(parents=True)
-            for path in (
-                bundle / "config.json",
-                bundle / "model.safetensors.index.json",
-                adapter / "adapter_config.json",
-                adapter / "adapter_model.safetensors",
-            ):
-                path.touch()
-
-            fake_python = temporary / "python"
-            fake_python.write_text(
-                "#!/usr/bin/env bash\nprintf '%s\\n' \"$TEST_BUNDLE_DIR\"\n",
-                encoding="utf-8",
-            )
-            fake_python.chmod(0o755)
-
-            subprocess.run(
-                [str(entrypoint), "gsm8k"],
-                check=True,
-                env={
-                    **os.environ,
-                    "PYTHON": str(fake_python),
-                    "UNO_BUNDLE_REPO": "s-sahoo/uno-qwen3-8B",
-                    "UNO_BUNDLE_REVISION": "bundle-sha",
-                    "TEST_BUNDLE_DIR": str(bundle),
-                    "TEST_OUTPUT": str(output),
-                    "MODEL_REVISION": "stale-base-sha",
-                    "TOKENIZER_PATH": "stale-tokenizer",
-                    "GATED_LORA_REVISION": "stale-adapter-sha",
-                },
-            )
-            self.assertEqual(
-                output.read_text(encoding="utf-8").splitlines(),
-                [
-                    str(bundle),
-                    str(bundle),
-                    str(adapter),
-                    "uno-qwen3-8B",
-                    "unset",
-                    "unset",
-                    "gsm8k",
-                ],
-            )
+            (adapter / "adapter_config.json").touch()
+            with patch("generation.resolve_hf_snapshot", return_value=str(bundle)):
+                model, adapter_path = resolve_model_sources(
+                    "s-sahoo/uno-qwen3-8B",
+                    None,
+                    model_revision="bundle-sha",
+                    gated_lora_subfolder="adapter",
+                )
+            self.assertEqual(model, str(bundle))
+            self.assertEqual(adapter_path, str(adapter))
 
     def test_uniform_noise_matches_training_token_range(self):
         params = SamplingParams(
@@ -443,7 +345,7 @@ class BenchmarkCompatibilityTest(unittest.TestCase):
                 encoding="utf-8",
             )
             with patch(
-                "nano_vllm_uno.eval.model_tokens.AutoConfig.from_pretrained",
+                "nano_vllm_uno.utils.model_tokens.AutoConfig.from_pretrained",
                 return_value=config,
             ):
                 mask_id, stop_ids, vocab_size = resolve_model_token_ids(
@@ -542,7 +444,7 @@ class BenchmarkCompatibilityTest(unittest.TestCase):
         "IFEval dependencies are not installed",
     )
     def test_ifeval_grading_is_deterministic(self):
-        from nano_vllm_uno.eval.ifeval_grader import score_ifeval
+        from evaluation.graders.ifeval import score_ifeval
 
         rows = [
             {
@@ -566,7 +468,7 @@ class BenchmarkCompatibilityTest(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertEqual(first_summary, second_summary)
 
-    @patch("nano_vllm_uno.eval.lcb_grader.codegen_metrics")
+    @patch("evaluation.graders.lcb.codegen_metrics")
     def test_lcb_grades_raw_generation(self, metrics_mock):
         metrics_mock.return_value = (
             {"pass@1": 1.0},
