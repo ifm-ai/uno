@@ -1,4 +1,4 @@
-# [Uno](https://github.com/drproduck/nano-vllm-uno)
+# [Uno](https://github.com/ifm-ai/uno)
 
 [![Uno](https://img.shields.io/badge/Hugging%20Face-Uno-FFD21E?logo=huggingface&logoColor=000)](https://huggingface.co/IFM/K2-Horizon-7B-Uno)
 [![Uno-Qwen](https://img.shields.io/badge/Hugging%20Face-Uno%20Qwen-FFD21E?logo=huggingface&logoColor=000)](https://huggingface.co/s-sahoo/uno-qwen3-8B)
