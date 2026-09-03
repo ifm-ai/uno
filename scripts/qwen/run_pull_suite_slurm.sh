@@ -17,7 +17,7 @@ SCRIPT_DIR="${REPO_ROOT}/scripts/qwen"
 PYTHON="${PYTHON:-python}"
 
 source "${SCRIPT_DIR}/release_model_defaults.sh"
-source "${SCRIPT_DIR}/eval_defaults.sh"
+source "${SCRIPT_DIR}/../common/eval_defaults.sh"
 
 adapter_or_model="${GATED_LORA_PATH:-${MODEL}}"
 RUN_NAME="${RUN_NAME:-$(basename "${adapter_or_model}")-pull-b${DIFFUSION_BLOCK_SIZE:-16}}"

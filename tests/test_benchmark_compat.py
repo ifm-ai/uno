@@ -138,6 +138,85 @@ class BenchmarkCompatibilityTest(unittest.TestCase):
             backend_index = arguments.index("--attention-backend")
             self.assertEqual(arguments[backend_index + 1], "fa2")
 
+    def test_model_entrypoints_delegate_to_shared_runner(self):
+        repository = Path(__file__).resolve().parents[1]
+        for family in ("qwen", "k2_horizon"):
+            entrypoint = repository / "scripts" / family / "run_benchmark.sh"
+            self.assertTrue(entrypoint.is_file())
+            self.assertIn(
+                'exec "${SCRIPT_DIR}/../common/run_benchmark.sh" "$@"',
+                entrypoint.read_text(encoding="utf-8"),
+            )
+
+    def test_k2_horizon_linear_wrappers_match_reference_protocol(self):
+        repository = Path(__file__).resolve().parents[1]
+        scripts = repository / "scripts" / "k2_horizon"
+        cases = {
+            "gsm8k": (262144, 131072),
+            "math500": (262144, 131072),
+            "aime24": (262144, 131072),
+            "aime25": (500000, 500000),
+            "aime26": (500000, 500000),
+            "lcr": (262144, 32768),
+        }
+
+        with tempfile.TemporaryDirectory() as directory:
+            temporary = Path(directory)
+            fake_python = temporary / "python"
+            fake_python.write_text(
+                '#!/usr/bin/env bash\nprintf "%s\\n" "$@" > "${TEST_OUTPUT}"\n',
+                encoding="utf-8",
+            )
+            fake_python.chmod(0o755)
+
+            for benchmark, (context, max_tokens) in cases.items():
+                output = temporary / f"{benchmark}.arguments"
+                wrapper = scripts / f"run_{benchmark}_linear_b8.sh"
+                subprocess.run(
+                    [str(wrapper)],
+                    check=True,
+                    env={
+                        **os.environ,
+                        "PYTHON": str(fake_python),
+                        "TEST_OUTPUT": str(output),
+                        "RESULTS_ROOT": str(temporary / "results"),
+                        "MODEL": "test-k2-base",
+                        "GATED_LORA_PATH": "test-k2-adapter",
+                        "MODEL_REVISION": "",
+                        "GATED_LORA_REVISION": "",
+                        "SKIP_GRADING": "1",
+                    },
+                )
+                arguments = output.read_text(encoding="utf-8").splitlines()
+
+                def value(flag: str) -> str:
+                    index = arguments.index(flag)
+                    return arguments[index + 1]
+
+                self.assertEqual(value("--benchmark"), benchmark)
+                self.assertEqual(value("--data-parallel-size"), "8")
+                self.assertEqual(value("--tensor-parallel-size"), "1")
+                self.assertEqual(value("--max-num-seqs"), "4")
+                self.assertEqual(value("--max-model-len"), str(context))
+                self.assertEqual(value("--max-num-batched-tokens"), str(context))
+                self.assertEqual(value("--max-tokens"), str(max_tokens))
+                self.assertEqual(value("--num-samples"), "1")
+                self.assertEqual(value("--temperature"), "1.0")
+                self.assertEqual(value("--top-k"), "50")
+                self.assertEqual(value("--top-p"), "0.95")
+                self.assertEqual(value("--attention-backend"), "fa3")
+                self.assertEqual(value("--diffusion-block-size"), "8")
+                self.assertEqual(value("--cuda-graph-block-sizes"), "1,8")
+                self.assertEqual(value("--cuda-graph-batch-sizes"), "1,2,4")
+                self.assertEqual(value("--noise-mode"), "random_uniform")
+                self.assertEqual(value("--mask-token-id"), "250624")
+                self.assertEqual(value("--stop-token-ids"), "250019,1")
+                self.assertEqual(value("--instruction"), "")
+                self.assertEqual(
+                    BENCHMARKS[benchmark].chat_template_kwargs,
+                    {"reasoning_effort": "high"},
+                )
+
     def test_copied_slurm_wrapper_uses_exported_repository_root(self):
         repository = Path(__file__).resolve().parents[1]
         source_wrapper = (
@@ -189,17 +268,19 @@ class BenchmarkCompatibilityTest(unittest.TestCase):
             temporary = Path(directory)
             fake_repository = temporary / "checkout"
             script_directory = fake_repository / "scripts" / "qwen"
+            common_directory = fake_repository / "scripts" / "common"
             script_directory.mkdir(parents=True)
+            common_directory.mkdir(parents=True)
             (script_directory / "release_model_defaults.sh").write_text(
                 "MODEL=fake-model\nGATED_LORA_PATH=\n"
                 "export MODEL GATED_LORA_PATH\n",
                 encoding="utf-8",
             )
-            (script_directory / "eval_defaults.sh").write_bytes(
+            (common_directory / "eval_defaults.sh").write_bytes(
                 (
                     repository
                     / "scripts"
-                    / "qwen"
+                    / "common"
                     / "eval_defaults.sh"
                 ).read_bytes()
             )

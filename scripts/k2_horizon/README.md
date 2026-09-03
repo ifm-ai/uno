@@ -1,9 +1,9 @@
 # K2 Horizon evaluation scripts
 
 These wrappers pin the K2 Horizon model family, linear block size 8, and the
-K2 token IDs used by the published checkpoints. They reuse
-`scripts/qwen/run_benchmark.sh` so benchmark preparation and scoring stay in a
-single implementation.
+K2 token IDs used by the published checkpoints. They delegate to
+`scripts/common/run_benchmark.sh` so Qwen and K2 share one generation and
+scoring implementation.
 
 Run a single benchmark directly, for example:
 

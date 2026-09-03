@@ -92,7 +92,8 @@ The launchers use these pinned revisions by default; see
 Model-specific launchers are organized under `scripts/qwen` and
 `scripts/k2_horizon`. The Qwen directory contains the complete generic
 evaluation suite; the K2 Horizon directory contains the K2 model defaults and
-linear-throughput wrappers while reusing the same benchmark runner.
+linear-throughput wrappers. Both delegate to the shared entry point in
+`scripts/common`.
 
 # Inference
 
