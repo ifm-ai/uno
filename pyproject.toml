@@ -1,0 +1,50 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nano-vllm-uno"
+version = "0.1.0"
+description = "Training and inference for Uno lossless speculative decoding"
+readme = "README.md"
+requires-python = ">=3.10,<3.11"
+license = { text = "Apache-2.0" }
+dependencies = [
+  "torch==2.11.0",
+  "transformers==4.55.0",
+  "safetensors==0.5.3",
+  "huggingface-hub>=0.34,<1",
+  "numpy==1.26.4",
+  "tqdm>=4.67,<5",
+  "xxhash>=3.5,<4",
+  "triton==3.6.0",
+  "flash-attn==2.8.3",
+]
+
+[project.optional-dependencies]
+eval = [
+  "absl-py==2.4.0",
+  "datasets==3.6.0",
+  "immutabledict==4.3.1",
+  "langdetect==1.0.9",
+  "math-verify==0.9.0",
+  "nltk==3.9.4",
+]
+train = [
+  "accelerate==1.7.0",
+  "datasets==3.6.0",
+  "deepspeed==0.16.9",
+  "einops>=0.8.1,<1",
+  "peft==0.15.2",
+  "PyYAML==6.0.2",
+  "wandb>=0.19,<1",
+]
+
+[project.urls]
+Repository = "https://github.com/drproduck/nano-vllm-uno"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["nano_vllm_uno*"]
+exclude = ["nano_vllm_uno.tests*"]
+namespaces = true

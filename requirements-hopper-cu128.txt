@@ -1,0 +1,22 @@
+# Tested Uno training/evaluation environment.
+# Platform: Linux x86_64, Python 3.10, CUDA 12.8.
+# Install torch and the matching FlashAttention wheel first as shown in README.
+
+--extra-index-url https://download.pytorch.org/whl/cu128
+
+torch==2.11.0
+transformers==4.55.0
+numpy==1.26.4
+datasets==3.6.0
+peft==0.15.2
+accelerate==1.7.0
+deepspeed==0.16.9
+flash-attn==2.8.3
+triton==3.6.0
+ninja==1.13.0
+safetensors==0.5.3
+einops>=0.8.1,<1
+PyYAML==6.0.2
+wandb>=0.19,<1
+
+.[eval,train]

@@ -1,0 +1,23 @@
+version: 1
+
+# Two nodes x eight GPUs x per-device batch eight x 4096 tokens.
+tokens_per_step: 524288
+sequence_length: 4096
+global_batch_size: 128
+total_tokens: 14745600000
+seed: 20260813
+
+# Alternating 4,688/4,687-step halves make each adjacent pair one exact epoch.
+stages:
+  - block_size: 2
+    tokens: 2457862144
+  - block_size: 4
+    tokens: 2457337856
+  - block_size: 6
+    tokens: 2457862144
+  - block_size: 8
+    tokens: 2457337856
+  - block_size: 12
+    tokens: 2457862144
+  - block_size: 16
+    tokens: 2457337856
