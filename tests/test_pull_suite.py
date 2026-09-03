@@ -196,6 +196,7 @@ class PullSuiteTest(unittest.TestCase):
             revision="revision-sha",
             cache_dir="/cache",
             local_files_only=True,
+            noise_mode="random_uniform",
         )
 
     def test_manifest_allows_exact_resume_and_rejects_changes(self):

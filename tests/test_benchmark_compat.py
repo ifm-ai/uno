@@ -305,6 +305,43 @@ class BenchmarkCompatibilityTest(unittest.TestCase):
                         mask_token_id=250624,
                     )
 
+    def test_k2_uniform_noise_uses_vocab_size_as_exclusive_upper_bound(self):
+        tokenizer = SimpleNamespace(
+            mask_token_id=None,
+            eos_token_id=250019,
+            unk_token_id=None,
+            convert_tokens_to_ids=lambda _: None,
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            model_path = Path(directory)
+            (model_path / "config.json").write_text(
+                json.dumps(
+                    {
+                        "model_type": "k2_horizon",
+                        "vocab_size": 250624,
+                        "eos_token_id": 1,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            mask_id, stop_ids, vocab_size = resolve_model_token_ids(
+                model_path,
+                tokenizer,
+                noise_mode="random_uniform",
+            )
+
+            self.assertEqual(mask_id, 250624)
+            self.assertEqual(stop_ids, [1, 250019])
+            self.assertEqual(vocab_size, 250624)
+            with self.assertRaisesRegex(ValueError, "outside model vocabulary"):
+                resolve_model_token_ids(
+                    model_path,
+                    tokenizer,
+                    mask_token_id=250624,
+                    noise_mode="mask",
+                )
+
     def test_gpqa_parser_matches_terminal_pattern(self):
         self.assertEqual(parse_gpqa_answer("analysis\n**(C)**"), "C")
 
