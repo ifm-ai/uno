@@ -80,14 +80,7 @@ python -m nano_vllm_uno.training.prepare_openthoughts \
 
 ## Checkpoints
 
-- Base model: [IFM/uno-qwen3-8b-base](https://huggingface.co/IFM/uno-qwen3-8b-base),
-  revision `4ccfeed3fba497e40495fe6dc5c15c89f7f1e2cd`.
-- LoRA adapter:
-  [s-sahoo/uno-qwen3-8B](https://huggingface.co/s-sahoo/uno-qwen3-8B),
-  revision `79536cf8c70aa48b9badc2532ffef208947463e3`.
-
-The launchers use these pinned revisions by default; see
-[`scripts/qwen/release_model_defaults.sh`](scripts/qwen/release_model_defaults.sh).
+- [s-sahoo/uno-qwen3-8B](https://huggingface.co/s-sahoo/uno-qwen3-8B)
 
 Model-specific launchers are organized under `scripts/qwen` and
 `scripts/k2_horizon`. The Qwen directory contains the complete generic
@@ -147,7 +140,7 @@ bash scripts/qwen/submit_pull_suite.sh
 
 # Training 
 
-Training is LoRA-only and starts from the pinned Uno base model above. W&B logging is enabled by default, so run
+Training is LoRA-only. W&B logging is enabled by default, so run
 `wandb login` first or set `WANDB_MODE=disabled`.
 
 After preparing OpenThoughts (as outlined above), launch the default two-node, 16-GPU, three-epoch block-curriculum training:
