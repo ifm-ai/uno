@@ -157,7 +157,6 @@ class BenchmarkCompatibilityTest(unittest.TestCase):
             "aime24": (262144, 131072),
             "aime25": (500000, 500000),
             "aime26": (500000, 500000),
-            "lcr": (262144, 32768),
         }
 
         with tempfile.TemporaryDirectory() as directory:

@@ -10,13 +10,13 @@
 #SBATCH --mem=0
 #SBATCH --exclusive
 #SBATCH --time=2-00:00:00
-#SBATCH --array=0-5
+#SBATCH --array=0-4
 
 set -euo pipefail
 
 REPO_ROOT="${NANO_VLLM_UNO_REPO_ROOT:-/mnt/weka/home/lingjie.chen/uno}"
 BASE_ROOT="${K2_HORIZON_ARTIFACT_ROOT:-/mnt/weka/shrd/k2m/lingjie.chen/hf_remote_smoke_20260903}"
-benchmarks=(gsm8k math500 aime24 aime25 aime26 lcr)
+benchmarks=(gsm8k math500 aime24 aime25 aime26)
 benchmark="${benchmarks[${SLURM_ARRAY_TASK_ID}]}"
 
 export PYTHON="${PYTHON:-/mnt/weka/home/lingjie.chen/miniconda3/envs/nano-fa3-torch28/bin/python}"
@@ -37,10 +37,6 @@ export NUM_SAMPLES=1
 export HF_HUB_OFFLINE=1
 export TRANSFORMERS_OFFLINE=1
 export TORCH_DISTRIBUTED_PORT=$((20000 + (SLURM_JOB_ID + SLURM_ARRAY_TASK_ID * 31) % 20000))
-if [[ "${benchmark}" == "lcr" ]]; then
-  export SKIP_GRADING=1
-else
-  export SKIP_GRADING=0
-fi
+export SKIP_GRADING=0
 
 exec "${REPO_ROOT}/scripts/k2_horizon/run_${benchmark}_linear_b8.sh"

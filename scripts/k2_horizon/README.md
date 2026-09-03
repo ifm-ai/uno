@@ -12,7 +12,7 @@ RESULTS_ROOT=/path/to/results \
   bash scripts/k2_horizon/run_gsm8k_linear_b8.sh
 ```
 
-The Slurm array launcher runs GSM8K, MATH500, AIME 2024--2026, and AA-LCR:
+The Slurm array launcher runs GSM8K, MATH500, and AIME 2024--2026:
 
 ```bash
 RESULTS_ROOT=/path/to/shared/results \
