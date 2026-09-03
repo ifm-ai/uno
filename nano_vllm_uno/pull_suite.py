@@ -16,7 +16,6 @@ from time import perf_counter
 from typing import Any
 
 from tqdm.auto import tqdm
-from transformers import AutoTokenizer
 
 from nano_vllm_uno.engine.async_engine import AsyncLLMEngine
 from nano_vllm_uno.engine.sequence import DECODE_STAT_KEYS
@@ -32,6 +31,7 @@ from nano_vllm_uno.eval.context_budget import (
     resolve_completion_budget,
 )
 from nano_vllm_uno.eval.model_tokens import resolve_model_token_ids
+from nano_vllm_uno.utils.hf_compat import load_tokenizer
 from nano_vllm_uno.sampling_params import SamplingParams
 
 
@@ -659,6 +659,7 @@ def _resolve_worker_model_token_ids(
         revision=config.model_revision,
         cache_dir=config.hf_cache_dir,
         local_files_only=config.hf_local_files_only,
+        noise_mode=settings.noise_mode,
     )
 
 
@@ -952,7 +953,7 @@ def run_coordinator(
     server = manager.get_server()
     threading.Thread(target=server.serve_forever, daemon=True).start()
 
-    tokenizer = AutoTokenizer.from_pretrained(
+    tokenizer = load_tokenizer(
         settings.tokenizer_path,
         use_fast=True,
         trust_remote_code=True,
@@ -972,6 +973,7 @@ def run_coordinator(
         revision=settings.model_revision,
         cache_dir=settings.hf_cache_dir,
         local_files_only=settings.hf_local_files_only,
+        noise_mode=settings.noise_mode,
     )
     suite = prepare_suite(settings, tokenizer)
     manifest = build_manifest(

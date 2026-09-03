@@ -13,6 +13,7 @@ import transformers.dynamic_module_utils as transformers_dynamic_module_utils
 import transformers.utils as transformers_utils
 
 from nano_vllm_uno.utils.hub import ADAPTER_ALLOW_PATTERNS, resolve_hf_snapshot
+from nano_vllm_uno.utils.hf_compat import is_native_k2_model, load_model_config
 
 logger = logging.getLogger(__name__)
 
@@ -178,7 +179,15 @@ class Config:
                 allow_patterns=ADAPTER_ALLOW_PATTERNS,
                 artifact_name="gated LoRA adapter",
             )
-        if model_source_is_local:
+        if is_native_k2_model(model_path):
+            self.hf_config = load_model_config(
+                self.model_source,
+                resolved_path=model_path,
+                revision=self.model_revision,
+                cache_dir=self.hf_cache_dir,
+                local_files_only=self.hf_local_files_only,
+            )
+        elif model_source_is_local:
             self.hf_config = AutoConfig.from_pretrained(
                 model_path,
                 trust_remote_code=True,

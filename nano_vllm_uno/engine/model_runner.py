@@ -19,6 +19,7 @@ from nano_vllm_uno.engine.tree_kv_copy import (
     copy_tree_kv,
 )
 from nano_vllm_uno.models.qwen3 import Qwen3ForCausalLM
+from nano_vllm_uno.models.xllm import XllmForCausalLM
 from nano_vllm_uno.layers.sampler import Sampler
 from nano_vllm_uno.utils.context import (
     ContextMode,
@@ -99,11 +100,15 @@ class ModelRunner:
         torch.set_default_dtype(config.dtype)
         torch.set_default_device("cuda")
         model_type = getattr(hf_config, "model_type", "").lower()
-        if model_type in {"qwen3", "sdar"}:
+        if model_type in {"xllm", "k2_aurora", "k2_horizon"}:
+            self.model = XllmForCausalLM(hf_config, config.attention_backend)
+        elif model_type in {"qwen3", "sdar"}:
             self.model = Qwen3ForCausalLM(hf_config, config.attention_backend)
         else:
             raise ValueError(
-                f"Unsupported model_type={model_type!r}. Supported: qwen3, sdar"
+                "Unsupported model_type="
+                f"{model_type!r}. Supported: qwen3, sdar, xllm, "
+                "k2_aurora, k2_horizon"
             )
         load_model(self.model, config.model)
         if config.gated_lora:

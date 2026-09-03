@@ -9,8 +9,6 @@ from pathlib import Path
 from time import perf_counter
 from typing import Any
 
-from transformers import AutoTokenizer
-
 from nano_vllm_uno import LLM, SamplingParams
 from nano_vllm_uno.engine.sequence import DECODE_STAT_KEYS
 from nano_vllm_uno.eval.benchmarks import get_benchmark, list_benchmarks
@@ -20,6 +18,7 @@ from nano_vllm_uno.eval.context_budget import (
     resolve_completion_budget,
 )
 from nano_vllm_uno.eval.model_tokens import resolve_model_token_ids
+from nano_vllm_uno.utils.hf_compat import load_tokenizer
 
 
 ID_FIELDS = ("id", "problem_id", "index", "row")
@@ -264,7 +263,7 @@ def main() -> None:
             "dataset or use --skip-row-count-check intentionally."
         )
     tokenizer_path = args.tokenizer_path or args.model
-    tokenizer = AutoTokenizer.from_pretrained(
+    tokenizer = load_tokenizer(
         tokenizer_path,
         use_fast=True,
         trust_remote_code=True,
@@ -280,6 +279,7 @@ def main() -> None:
         revision=args.model_revision,
         cache_dir=args.hf_cache_dir,
         local_files_only=args.hf_local_files_only,
+        noise_mode=args.noise_mode,
     )
 
     prompts: list[list[int]] = []

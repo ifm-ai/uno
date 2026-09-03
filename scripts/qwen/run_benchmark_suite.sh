@@ -20,6 +20,6 @@ BENCHMARKS=(
 
 for benchmark in "${BENCHMARKS[@]}"; do
   echo "===== ${benchmark} ====="
-  OUTPUT_DIR="${RESULTS_ROOT:-${SCRIPT_DIR}/../../results/uno_exp/${RUN_NAME:-$(basename "${GATED_LORA_PATH}")}}/${benchmark}" \
+  OUTPUT_DIR="${RESULTS_ROOT:-${SCRIPT_DIR}/../../results/qwen/${RUN_NAME:-$(basename "${GATED_LORA_PATH}")}}/${benchmark}" \
     "${SCRIPT_DIR}/run_benchmark.sh" "${benchmark}"
 done

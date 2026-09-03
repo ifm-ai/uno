@@ -7,7 +7,7 @@ REPO_ROOT="$(cd -- "${SCRIPT_DIR}/../.." && pwd)"
 source "${SCRIPT_DIR}/release_model_defaults.sh"
 
 RUN_NAME="${RUN_NAME:-$(basename "${GATED_LORA_PATH}")}"
-RESULTS_ROOT="${RESULTS_ROOT:-${REPO_ROOT}/results/uno_exp}"
+RESULTS_ROOT="${RESULTS_ROOT:-${REPO_ROOT}/results/qwen}"
 LOG_DIR="${LOG_DIR:-${RESULTS_ROOT}/${RUN_NAME}/slurm}"
 SLURM_CPUS_PER_JOB="${SLURM_CPUS_PER_JOB:-64}"
 SLURM_TIME="${SLURM_TIME:-2-00:00:00}"

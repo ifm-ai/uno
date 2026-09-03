@@ -4,7 +4,6 @@ import os
 from time import perf_counter, perf_counter_ns
 from typing import Callable
 from tqdm.auto import tqdm
-from transformers import AutoTokenizer
 import torch.multiprocessing as mp
 
 from nano_vllm_uno.config import Config
@@ -12,6 +11,7 @@ from nano_vllm_uno.sampling_params import SamplingParams
 from nano_vllm_uno.engine.sequence import Sequence
 from nano_vllm_uno.engine.scheduler import Scheduler
 from nano_vllm_uno.engine.model_runner import ModelRunner
+from nano_vllm_uno.utils.hf_compat import load_tokenizer
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +55,7 @@ class LLMEngine:
         Sequence.block_size = config.kvcache_block_size
 
         tokenizer_path = tokenizer_path or config.model
-        self.tokenizer = AutoTokenizer.from_pretrained(
+        self.tokenizer = load_tokenizer(
             tokenizer_path,
             use_fast=True,
             trust_remote_code=True,

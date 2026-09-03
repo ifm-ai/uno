@@ -58,7 +58,7 @@ from pinned public sources. To prepare all 12 benchmarks in advance, run:
 ```bash
 export HF_HOME=/path/to/shared/hf-cache
 export UNO_EVAL_DATA_DIR=/path/to/shared/uno-eval-data
-python scripts/uno_exp/prepare_benchmark_data.py
+python scripts/qwen/prepare_benchmark_data.py
 ```
 
 The suite contains GSM8K, MATH500, AIME 2024--2026, HumanEval, MBPP,
@@ -83,11 +83,17 @@ python -m nano_vllm_uno.training.prepare_openthoughts \
 - Base model: [IFM/uno-qwen3-8b-base](https://huggingface.co/IFM/uno-qwen3-8b-base),
   revision `4ccfeed3fba497e40495fe6dc5c15c89f7f1e2cd`.
 - LoRA adapter:
-  [IFM/uno-qwen3-8b-lora-r128](https://huggingface.co/IFM/uno-qwen3-8b-lora-r128),
-  revision `fc17223b353f31be0eda939cc1e26423e05f54c0`.
+  [s-sahoo/uno-qwen3-8B](https://huggingface.co/s-sahoo/uno-qwen3-8B),
+  revision `79536cf8c70aa48b9badc2532ffef208947463e3`.
 
 The launchers use these pinned revisions by default; see
-[`scripts/uno_exp/release_model_defaults.sh`](scripts/uno_exp/release_model_defaults.sh).
+[`scripts/qwen/release_model_defaults.sh`](scripts/qwen/release_model_defaults.sh).
+
+Model-specific launchers are organized under `scripts/qwen` and
+`scripts/k2_horizon`. The Qwen directory contains the complete generic
+evaluation suite; the K2 Horizon directory contains the K2 model defaults and
+linear-throughput wrappers. Both delegate to the shared entry point in
+`scripts/common`.
 
 # Inference
 
@@ -103,7 +109,7 @@ RESULTS_ROOT=/path/to/shared/results \
 HF_CACHE_DIR=/path/to/shared/hf-cache \
 ATTENTION_BACKEND=fa2 \
 SBATCH_ARGS="--account=my-account --partition=my-partition" \
-bash scripts/uno_exp/submit_pull_suite.sh
+bash scripts/qwen/submit_pull_suite.sh
 ```
 
 The launcher prepares missing data, grades every benchmark, and writes
@@ -119,7 +125,7 @@ RESULTS_ROOT=/path/to/shared/results \
 HF_CACHE_DIR=/path/to/shared/hf-cache \
 BENCHMARKS="aime24 humaneval" \
 SBATCH_ARGS="--account=my-account --partition=my-partition" \
-bash scripts/uno_exp/submit_benchmark_suite.sh
+bash scripts/qwen/submit_benchmark_suite.sh
 ```
 
 ## Tree Sampler (Per-request Throughput Optimal)
@@ -136,7 +142,7 @@ TREE_VERIFY_SIZE=60 \
 TREE_CANDIDATE_TOP_K=32 \
 TORCH_COMPILE=0 \
 SBATCH_ARGS="--account=my-account --partition=my-partition" \
-bash scripts/uno_exp/submit_pull_suite.sh
+bash scripts/qwen/submit_pull_suite.sh
 ```
 
 # Training 

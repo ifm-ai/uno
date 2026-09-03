@@ -13,15 +13,15 @@ if [[ -n "${NANO_VLLM_UNO_REPO_ROOT:-}" ]]; then
 else
   REPO_ROOT="${SLURM_SUBMIT_DIR:-$(pwd)}"
 fi
-SCRIPT_DIR="${REPO_ROOT}/scripts/uno_exp"
+SCRIPT_DIR="${REPO_ROOT}/scripts/qwen"
 PYTHON="${PYTHON:-python}"
 
 source "${SCRIPT_DIR}/release_model_defaults.sh"
-source "${SCRIPT_DIR}/eval_defaults.sh"
+source "${SCRIPT_DIR}/../common/eval_defaults.sh"
 
 adapter_or_model="${GATED_LORA_PATH:-${MODEL}}"
 RUN_NAME="${RUN_NAME:-$(basename "${adapter_or_model}")-pull-b${DIFFUSION_BLOCK_SIZE:-16}}"
-RESULTS_ROOT="${RESULTS_ROOT:-${REPO_ROOT}/results/uno_exp}"
+RESULTS_ROOT="${RESULTS_ROOT:-${REPO_ROOT}/results/qwen}"
 RUN_DIR="${RESULTS_ROOT}/${RUN_NAME}"
 JOB_LOG_DIR="${RUN_DIR}/slurm-${SLURM_JOB_ID}"
 mkdir -p "${JOB_LOG_DIR}"

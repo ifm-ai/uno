@@ -3,9 +3,16 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
+import os
 from typing import Any
 
 from transformers import AutoConfig, GenerationConfig
+
+from nano_vllm_uno.utils.hf_compat import (
+    NATIVE_K2_MODEL_TYPES,
+    is_native_k2_model,
+    load_model_config,
+)
 
 
 def _as_token_ids(value: Any) -> list[int]:
@@ -60,6 +67,7 @@ def resolve_model_token_ids(
     revision: str | None = None,
     cache_dir: str | None = None,
     local_files_only: bool = False,
+    noise_mode: str = "mask",
 ) -> tuple[int, list[int], int]:
     """Return ``(mask_id, stop_ids, vocab_size)`` with range validation.
 
@@ -68,13 +76,23 @@ def resolve_model_token_ids(
     launcher resolves and forwards the same IDs explicitly.
     """
 
-    config = AutoConfig.from_pretrained(
-        model_path,
-        trust_remote_code=True,
-        revision=revision,
-        cache_dir=cache_dir,
-        local_files_only=local_files_only,
-    )
+    local_model_path = os.path.abspath(os.path.expanduser(os.fspath(model_path)))
+    if os.path.isdir(local_model_path) and not is_native_k2_model(local_model_path):
+        config = AutoConfig.from_pretrained(
+            model_path,
+            trust_remote_code=True,
+            revision=revision,
+            cache_dir=cache_dir,
+            local_files_only=local_files_only,
+        )
+    else:
+        config = load_model_config(
+            model_path,
+            resolved_path=local_model_path if os.path.isdir(local_model_path) else None,
+            revision=revision,
+            cache_dir=cache_dir,
+            local_files_only=local_files_only,
+        )
     vocab_size = int(config.vocab_size)
 
     resolved_mask = mask_token_id
@@ -87,6 +105,12 @@ def resolve_model_token_ids(
         unknown = getattr(tokenizer, "unk_token_id", None)
         if candidate is not None and candidate != unknown:
             resolved_mask = candidate
+    if (
+        resolved_mask is None
+        and noise_mode in {"random_uniform", "deterministic_uniform"}
+        and getattr(config, "model_type", "") in NATIVE_K2_MODEL_TYPES
+    ):
+        resolved_mask = vocab_size
     if resolved_mask is None:
         raise ValueError(
             "Could not resolve the diffusion mask token. Set --mask-token-id "
@@ -111,11 +135,17 @@ def resolve_model_token_ids(
     else:
         resolved_stops = _dedupe(stop_token_ids)
 
-    invalid = [
-        token_id
-        for token_id in [resolved_mask, *resolved_stops]
-        if not 0 <= token_id < vocab_size
-    ]
+    mask_upper_bound = (
+        vocab_size + 1
+        if noise_mode in {"random_uniform", "deterministic_uniform"}
+        else vocab_size
+    )
+    invalid = []
+    if not 0 <= resolved_mask < mask_upper_bound:
+        invalid.append(resolved_mask)
+    invalid.extend(
+        token_id for token_id in resolved_stops if not 0 <= token_id < vocab_size
+    )
     if invalid:
         raise ValueError(
             f"Token IDs {invalid} are outside model vocabulary [0, {vocab_size}). "

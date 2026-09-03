@@ -18,7 +18,7 @@ if [[ -n "${NANO_VLLM_UNO_REPO_ROOT:-}" ]]; then
 else
   REPO_ROOT="${SLURM_SUBMIT_DIR:-$(pwd)}"
 fi
-RUNNER="${REPO_ROOT}/scripts/uno_exp/run_benchmark.sh"
+RUNNER="${REPO_ROOT}/scripts/qwen/run_benchmark.sh"
 if [[ ! -x "${RUNNER}" ]]; then
   echo "Could not find the benchmark runner at ${RUNNER}" >&2
   echo "Set NANO_VLLM_UNO_REPO_ROOT to the nano-vllm-uno checkout." >&2

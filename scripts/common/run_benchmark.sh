@@ -11,11 +11,17 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/../.." && pwd)"
 PYTHON="${PYTHON:-python}"
 
-source "${SCRIPT_DIR}/release_model_defaults.sh"
+MODEL_DEFAULTS="${UNO_MODEL_DEFAULTS:-${REPO_ROOT}/scripts/qwen/release_model_defaults.sh}"
+RESULTS_NAMESPACE="${UNO_RESULTS_NAMESPACE:-qwen}"
+if [[ ! -f "${MODEL_DEFAULTS}" ]]; then
+  echo "Model defaults file not found: ${MODEL_DEFAULTS}" >&2
+  exit 2
+fi
+source "${MODEL_DEFAULTS}"
 source "${SCRIPT_DIR}/eval_defaults.sh"
 
 RUN_NAME="${RUN_NAME:-$(basename "${GATED_LORA_PATH}")}"
-RESULTS_ROOT="${RESULTS_ROOT:-${REPO_ROOT}/results/uno_exp}"
+RESULTS_ROOT="${RESULTS_ROOT:-${REPO_ROOT}/results/${RESULTS_NAMESPACE}}"
 OUTPUT_DIR="${OUTPUT_DIR:-${RESULTS_ROOT}/${RUN_NAME}/${BENCHMARK}}"
 OUTPUT="${OUTPUT:-${OUTPUT_DIR}/generations.jsonl}"
 GRADES="${GRADES:-${OUTPUT_DIR}/grades.jsonl}"
