@@ -1,5 +1,5 @@
 <div align="center">
-  <h1><a href="https://s-sahoo.com/uno/">Unlocking Lossless Speedups in LLMs via Discrete Diffusion</a></h1>
+  <h1><a href="https://s-sahoo.com/uno/">Unlocking Lossless Speedups in LLMs <br> via Discrete Diffusion</a></h1>
   <p>
     <a href="https://s-sahoo.github.io">Subham Sekhar Sahoo</a>,
     <a href="https://lingjiechen2.github.io">Lingjie Chen</a>,
