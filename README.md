@@ -176,11 +176,11 @@ MAX_JOBS=16 python -m pip install --no-build-isolation .
 
 ### Checkpoints
 
-| Model | Uno checkpoint | Loading layout |
+| Model | Base model | Uno weights |
 | --- | --- | --- |
-| Uno 8B | [Uno 8B checkpoint](https://huggingface.co/IFM/K2-Horizon-7B-Uno) | [Base model](https://huggingface.co/IFM/K2-Horizon-7B); the Uno checkpoint contains the conditional LoRA adapter |
-| Uno 1B | [Uno 1B checkpoint](https://huggingface.co/IFM/K2-Horizon-0.9B-Uno) | [Base model](https://huggingface.co/IFM/K2-Horizon-0.9B); the Uno checkpoint contains the conditional LoRA adapter |
-| Uno Qwen3 8B | [s-sahoo/uno-qwen3-8B](https://huggingface.co/s-sahoo/uno-qwen3-8B) | Base weights are at the repository root; the conditional LoRA adapter is under `adapter/` |
+| Uno 8B | The base model is [IFM/K2-Horizon-7B](https://huggingface.co/IFM/K2-Horizon-7B) | The conditional LoRA adapter is available from the [Uno 8B checkpoint](https://huggingface.co/IFM/K2-Horizon-7B-Uno) |
+| Uno 1B | The base model is [IFM/K2-Horizon-0.9B](https://huggingface.co/IFM/K2-Horizon-0.9B) | The conditional LoRA adapter is available from the [Uno 1B checkpoint](https://huggingface.co/IFM/K2-Horizon-0.9B-Uno) |
+| Uno Qwen3 8B | The base weights are at the root of [s-sahoo/uno-qwen3-8B](https://huggingface.co/s-sahoo/uno-qwen3-8B) | The conditional LoRA adapter is in the same repository under `adapter/` |
 
 Public checkpoints can be downloaded without a Hugging Face token. A token is
 still required for gated datasets such as GPQA and for any private or gated
@@ -194,9 +194,8 @@ or evaluation workflow.
 
 ### Training
 
-The public training recipe currently targets Uno Qwen3 8B. The Uno 8B and Uno
-1B releases provide inference and evaluation recipes, but not training
-launchers.
+To train Uno Qwen3 8B, prepare the training data and run the shared training
+entry point as follows.
 
 #### 1. Prepare the Training Data
 
@@ -209,36 +208,33 @@ python -m training.prepare_openthoughts \
   --num-proc 32
 ```
 
-#### 2. Launch Uno Qwen3 8B Training
+#### 2. Train Uno Qwen3 8B
 
-The following command launches the published two-node, 16-GPU,
-three-epoch progressive block-size curriculum:
+The following is a single-GPU command. Gradient accumulation preserves the
+released global batch size of 128:
 
 ```bash
-DATASET_PATH=/path/to/openthoughts-uno-4095 \
-TRAIN_STORAGE_ROOT=/path/to/uno-training \
-SLURM_ACCOUNT=my-account \
-SLURM_PARTITION=my-partition \
-  bash examples/uno_qwen3_8B/run_train.sh
+python -m training.train \
+  --dataset-path /path/to/openthoughts-uno-4095 \
+  --output-dir /path/to/uno-training \
+  --curriculum training/configs/uno_3epoch_curriculum.yaml \
+  --deepspeed training/configs/deepspeed_zero2.json \
+  --per-device-batch-size 8 \
+  --gradient-accumulation-steps 16 \
+  --learning-rate 1e-5 \
+  --warmup-steps 562 \
+  --lora-target all \
+  --lora-rank 128 \
+  --lora-alpha 2048 \
+  --ce-alpha 0 \
+  --kl-beta 0 \
+  --tv-gamma 1
 ```
 
-The default curriculum spends half an epoch at each diffusion block size:
-`2`, `4`, `6`, `8`, `12`, and `16`.
-
-| Setting | Default |
-| --- | --- |
-| Global batch size | `128` |
-| Learning rate | `1e-5` |
-| Warmup | `562` steps, or 2% of training |
-| Learning-rate decay | Disabled |
-| LoRA rank | `128` |
-| LoRA alpha | `2048` |
-| LoRA targets | Q, K, V, O, gate, up, and down projections |
-| CE weight | `0` |
-| Reverse-KL weight | `0` |
-| TV weight | `1` |
-
-Set `RESUME_FROM_CHECKPOINT` and reuse the original `RUN_NAME` to resume a run.
+See [`training/train.py`](training/train.py) and
+[`training/configs/uno_3epoch_curriculum.yaml`](training/configs/uno_3epoch_curriculum.yaml)
+for the complete training configuration. Resume an interrupted run with
+`--resume-from-checkpoint /path/to/checkpoint` and the same `--output-dir`.
 
 ### Inference
 
