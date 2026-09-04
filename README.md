@@ -21,14 +21,14 @@
     <a href="https://mbzuai.ac.ae/study/faculty/professor-eric-xing/">Eric Xing</a>,
     <a href="https://hunterhector.github.io">Zhengzhong Liu</a>
   </p>
+  <p>
+    <a href="https://arxiv.org/abs/XXXX.XXXXX"><img src="https://img.shields.io/badge/arXiv-coming%20soon-B31B1B.svg" alt="arXiv"></a>
+    <a href="https://huggingface.co/IFM/K2-Horizon-7B-Uno"><img src="https://img.shields.io/badge/Hugging%20Face-K2%20Horizon%207B%20Uno-FFD21E?logo=huggingface&amp;logoColor=000" alt="K2 Horizon 7B Uno"></a>
+    <a href="https://huggingface.co/IFM/K2-Horizon-0.9B-Uno"><img src="https://img.shields.io/badge/Hugging%20Face-K2%20Horizon%200.9B%20Uno-FFD21E?logo=huggingface&amp;logoColor=000" alt="K2 Horizon 0.9B Uno"></a>
+    <a href="https://huggingface.co/s-sahoo/uno-qwen3-8B"><img src="https://img.shields.io/badge/Hugging%20Face-Uno%20Qwen3%208B-FFD21E?logo=huggingface&amp;logoColor=000" alt="Uno Qwen3 8B"></a>
+  </p>
   <img src="uno_results.png" alt="Uno training pipeline and benchmark results">
 </div>
-
-[![arXiv](https://img.shields.io/badge/arXiv-coming%20soon-B31B1B.svg)](https://arxiv.org/abs/XXXX.XXXXX)
-[![K2 Horizon 7B Uno](https://img.shields.io/badge/Hugging%20Face-K2%20Horizon%207B%20Uno-FFD21E?logo=huggingface&logoColor=000)](https://huggingface.co/IFM/K2-Horizon-7B-Uno)
-[![K2 Horizon 0.9B Uno](https://img.shields.io/badge/Hugging%20Face-K2%20Horizon%200.9B%20Uno-FFD21E?logo=huggingface&logoColor=000)](https://huggingface.co/IFM/K2-Horizon-0.9B-Uno)
-[![Uno Qwen3 8B](https://img.shields.io/badge/Hugging%20Face-Uno%20Qwen3%208B-FFD21E?logo=huggingface&logoColor=000)](https://huggingface.co/s-sahoo/uno-qwen3-8B)
-[![License](https://img.shields.io/badge/License-Apache--2.0-2F80ED.svg)](LICENSE)
 
 Uno is a diffusion-augmented language model with two pathways in a unified
 architecture:
