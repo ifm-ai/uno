@@ -32,7 +32,7 @@
 
 <br>
 
-Uno is a diffusion-augmented language model that preserves the distribution
+**Uno** is a diffusion-augmented language model that preserves the distribution
 and quality of an autoregressive (AR) model while using diffusion to generate
 multiple tokens in parallel. Its parameters are decoupled into standard AR
 weights, trained with next-token prediction, and lightweight diffusion weights,
@@ -49,7 +49,10 @@ In this repo, we release:
   - A Nano-vLLM-based inference engine shared by all Uno models.
   - Linear sampling for high system throughput.
   - Tree sampling for high per-request throughput.
-  - Ready-to-run recipes for Uno Qwen3 8B, Uno 8B, and Uno 1B.
+  - Ready-to-run recipes for
+    [Uno Qwen3 8B](https://huggingface.co/s-sahoo/uno-qwen3-8B),
+    [Uno 8B](https://huggingface.co/IFM/K2-Horizon-7B-Uno), and
+    [Uno 1B](https://huggingface.co/IFM/K2-Horizon-0.9B-Uno).
 - **Training**
   - A conditional-LoRA diffusion training pipeline for Uno Qwen3 8B.
   - OpenThoughts data preparation and progressive block-size curricula.
@@ -59,6 +62,19 @@ In this repo, we release:
   - Benchmark-specific data loaders and graders.
   - Accuracy, tokens per forward (TPF), and tokens per second (TPS) metrics.
   - Single-benchmark, full-suite, and persistent pull-based launchers.
+
+## Table of Contents
+
+- [Code Organization](#code-organization)
+- [Getting Started](#getting-started)
+  - [Installation](#installation)
+  - [Checkpoints](#checkpoints)
+- [Reproducing Experiments](#reproducing-experiments)
+  - [Training](#training)
+  - [Inference](#inference)
+  - [Evaluation](#evaluation)
+- [Acknowledgements](#acknowledgements)
+- [Citation](#citation)
 
 ## Code Organization
 
@@ -99,6 +115,34 @@ uno/
 Each directory under `examples/` supplies lightweight model defaults and calls
 the same top-level workflows. Model-specific details therefore stay separate
 without duplicating inference or evaluation logic.
+
+The main implementation modules are:
+
+1. [`nano_vllm_uno/llm.py`](nano_vllm_uno/llm.py): Public generation API and
+   independent data-parallel replica management.
+2. [`nano_vllm_uno/config.py`](nano_vllm_uno/config.py) and
+   [`nano_vllm_uno/sampling_params.py`](nano_vllm_uno/sampling_params.py):
+   Runtime, batching, context, and sampling configuration.
+3. [`nano_vllm_uno/engine/llm_engine.py`](nano_vllm_uno/engine/llm_engine.py):
+   Generation lifecycle, scheduling, model execution, KV-cache coordination,
+   and decode statistics.
+4. [`nano_vllm_uno/engine/two_pass_decoding.py`](nano_vllm_uno/engine/two_pass_decoding.py):
+   Diffusion drafting and lossless verification shared by the linear and tree
+   samplers.
+5. [`nano_vllm_uno/engine/draft_tree.py`](nano_vllm_uno/engine/draft_tree.py)
+   and [`nano_vllm_uno/engine/tree_builder.py`](nano_vllm_uno/engine/tree_builder.py):
+   Best-first candidate-tree construction and verified-path selection.
+6. [`nano_vllm_uno/models/`](nano_vllm_uno/models): Qwen3 and XLLM model
+   implementations used by the shared engine.
+7. [`generation.py`](generation.py): Shared model/adapter resolution, chat
+   formatting, generation, TPF, and TPS accounting.
+8. [`inference.py`](inference.py): Free-form prompt inference CLI.
+9. [`evaluation/`](evaluation): Canonical benchmark protocols, pinned data,
+   generation, parsers, benchmark-specific graders, and Slurm launchers.
+10. [`training/`](training): Conditional-LoRA construction, data processing,
+    diffusion objectives, curricula, checkpointing, and distributed training.
+11. [`examples/`](examples): Directly executable model-specific training,
+    inference, and evaluation recipes.
 
 ## Getting Started
 
