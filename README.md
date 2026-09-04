@@ -1,5 +1,7 @@
 # [Uno](https://github.com/ifm-ai/uno)
 
+![Uno training pipeline and benchmark results](uno_results.png)
+
 [![arXiv](https://img.shields.io/badge/arXiv-coming%20soon-B31B1B.svg)](https://arxiv.org/abs/XXXX.XXXXX)
 [![K2 Horizon 7B Uno](https://img.shields.io/badge/Hugging%20Face-K2%20Horizon%207B%20Uno-FFD21E?logo=huggingface&logoColor=000)](https://huggingface.co/IFM/K2-Horizon-7B-Uno)
 [![K2 Horizon 0.9B Uno](https://img.shields.io/badge/Hugging%20Face-K2%20Horizon%200.9B%20Uno-FFD21E?logo=huggingface&logoColor=000)](https://huggingface.co/IFM/K2-Horizon-0.9B-Uno)
@@ -68,7 +70,6 @@ uno/
 │   ├── uno_qwen3_8B/           # Training, inference, and evaluation
 │   ├── uno_8B/                 # K2 Horizon 7B inference and evaluation
 │   └── uno_1B/                 # K2 Horizon 0.9B inference and evaluation
-├── tests/                      # Runtime, model, evaluation, and training tests
 ├── pyproject.toml
 └── README.md
 ```
