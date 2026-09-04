@@ -291,22 +291,6 @@ Set `MODEL_EXAMPLE` to `uno_qwen3_8B`, `uno_8B`, or `uno_1B`. A
 persistent pull-based launcher is also available at
 `evaluation/submit_pull_suite.sh`.
 
-Canonical sampling, context, output-budget, and prompt settings are resolved by
-the benchmark registry. Deliberate overrides must include
-`--protocol-arm <label>`, which prevents an experimental arm from being
-mistaken for a protocol-comparable result. HLE, AA-LCR, and AA-Omniscience
-additionally require an external judge configured through `JUDGE_MODEL` and,
-when needed, `JUDGE_BASE_URL` and `JUDGE_API_KEY`.
-
-Each completed benchmark directory contains:
-
-```text
-generations.jsonl          # Prompts, completions, token counts, and decode stats
-generation_summary.json   # Aggregate generation, TPF, and TPS metrics
-grades.jsonl               # Per-sample grading records
-scores.json                # Aggregate benchmark scores
-```
-
 ## Acknowledgements
 
 Uno's runtime builds on
