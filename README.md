@@ -78,71 +78,20 @@ In this repo, we release:
 
 ## Code Organization
 
-`nano_vllm_uno` is the inference engine. The shared inference, evaluation, and
-training workflows live in separate top-level modules:
+The repository is organized around the workflows users run:
 
-```text
-uno/
-├── nano_vllm_uno/
-│   ├── engine/                 # Scheduling, KV cache, linear and tree decoding
-│   ├── layers/                 # Attention, normalization, sampling, and kernels
-│   ├── models/                 # Qwen3 and K2/XLLM model implementations
-│   ├── llm.py                  # User-facing generation API
-│   └── sampling_params.py      # Sampling configuration
-├── generation.py               # Shared generation and TPF/TPS measurement
-├── inference.py                # Free-form prompt inference entry point
-├── evaluation/
-│   ├── run.py                  # Generate and score one benchmark
-│   ├── benchmarks.py           # Canonical benchmark protocols
-│   ├── data.py                 # Dataset preparation and loading
-│   ├── graders/                # Math, code, MC, IFEval, LCB, LCR, and LLM judges
-│   └── submit_suite.sh         # Full-suite Slurm launcher
-├── training/
-│   ├── train.py                # Distributed training entry point
-│   ├── trainer.py              # Uno training loop
-│   ├── data.py                 # Training-data pipeline
-│   ├── losses.py               # CE, reverse-KL, and TV objectives
-│   ├── configs/                # Curriculum and DeepSpeed configurations
-│   └── run_slurm.sh            # Multi-node Slurm launcher
-├── examples/
-│   ├── uno_qwen3_8B/           # Training, inference, and evaluation
-│   ├── uno_8B/                 # Uno 8B inference and evaluation
-│   └── uno_1B/                 # Uno 1B inference and evaluation
-├── pyproject.toml
-└── README.md
-```
-
-Each directory under `examples/` supplies lightweight model defaults and calls
-the same top-level workflows. Model-specific details therefore stay separate
-without duplicating inference or evaluation logic.
-
-The main implementation modules are:
-
-1. [`nano_vllm_uno/llm.py`](nano_vllm_uno/llm.py): Public generation API and
-   independent data-parallel replica management.
-2. [`nano_vllm_uno/config.py`](nano_vllm_uno/config.py) and
-   [`nano_vllm_uno/sampling_params.py`](nano_vllm_uno/sampling_params.py):
-   Runtime, batching, context, and sampling configuration.
-3. [`nano_vllm_uno/engine/llm_engine.py`](nano_vllm_uno/engine/llm_engine.py):
-   Generation lifecycle, scheduling, model execution, KV-cache coordination,
-   and decode statistics.
-4. [`nano_vllm_uno/engine/two_pass_decoding.py`](nano_vllm_uno/engine/two_pass_decoding.py):
-   Diffusion drafting and lossless verification shared by the linear and tree
-   samplers.
-5. [`nano_vllm_uno/engine/draft_tree.py`](nano_vllm_uno/engine/draft_tree.py)
-   and [`nano_vllm_uno/engine/tree_builder.py`](nano_vllm_uno/engine/tree_builder.py):
-   Best-first candidate-tree construction and verified-path selection.
-6. [`nano_vllm_uno/models/`](nano_vllm_uno/models): Qwen3 and XLLM model
-   implementations used by the shared engine.
-7. [`generation.py`](generation.py): Shared model/adapter resolution, chat
-   formatting, generation, TPF, and TPS accounting.
-8. [`inference.py`](inference.py): Free-form prompt inference CLI.
-9. [`evaluation/`](evaluation): Canonical benchmark protocols, pinned data,
-   generation, parsers, benchmark-specific graders, and Slurm launchers.
-10. [`training/`](training): Conditional-LoRA construction, data processing,
-    diffusion objectives, curricula, checkpointing, and distributed training.
-11. [`examples/`](examples): Directly executable model-specific training,
-    inference, and evaluation recipes.
+- [`generation.py`](generation.py) contains the shared model loading,
+  conditional-LoRA attachment, prompt formatting, generation, and TPF/TPS
+  accounting used by both inference and evaluation.
+- [`inference.py`](inference.py) is the command-line entry point for generating
+  from free-form prompts with linear or tree sampling.
+- [`evaluation/`](evaluation) defines the benchmark protocols, dataset loaders,
+  generation pipeline, parsers, and benchmark-specific graders.
+- [`training/`](training) contains data preparation, conditional-LoRA training,
+  diffusion objectives, curriculum configuration, and checkpointing.
+- [`examples/`](examples) provides directly executable training, inference, and
+  evaluation recipes for Uno Qwen3 8B, Uno 8B, and Uno 1B. Each model directory
+  supplies only its model-specific defaults and calls the shared workflows.
 
 ## Getting Started
 
