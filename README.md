@@ -23,8 +23,8 @@
   </p>
   <p>
     <a href="https://arxiv.org/abs/XXXX.XXXXX"><img src="https://img.shields.io/badge/arXiv-coming%20soon-B31B1B.svg" alt="arXiv"></a>
-    <a href="https://huggingface.co/IFM/K2-Horizon-7B-Uno"><img src="https://img.shields.io/badge/Hugging%20Face-K2%20Horizon%207B%20Uno-FFD21E?logo=huggingface&amp;logoColor=000" alt="K2 Horizon 7B Uno"></a>
-    <a href="https://huggingface.co/IFM/K2-Horizon-0.9B-Uno"><img src="https://img.shields.io/badge/Hugging%20Face-K2%20Horizon%200.9B%20Uno-FFD21E?logo=huggingface&amp;logoColor=000" alt="K2 Horizon 0.9B Uno"></a>
+    <a href="https://huggingface.co/IFM/K2-Horizon-7B-Uno"><img src="https://img.shields.io/badge/Hugging%20Face-Uno%208B-FFD21E?logo=huggingface&amp;logoColor=000" alt="Uno 8B"></a>
+    <a href="https://huggingface.co/IFM/K2-Horizon-0.9B-Uno"><img src="https://img.shields.io/badge/Hugging%20Face-Uno%201B-FFD21E?logo=huggingface&amp;logoColor=000" alt="Uno 1B"></a>
     <a href="https://huggingface.co/s-sahoo/uno-qwen3-8B"><img src="https://img.shields.io/badge/Hugging%20Face-Uno%20Qwen3%208B-FFD21E?logo=huggingface&amp;logoColor=000" alt="Uno Qwen3 8B"></a>
   </p>
   <img src="uno_results.png" alt="Uno training pipeline and benchmark results">
@@ -43,14 +43,13 @@ the $\Psi$-Spec family of samplers provides lossless acceleration: linear
 sampling targets high system throughput, while tree sampling targets high
 per-request throughput.
 
-## In This Repo, We Release
+In this repo, we release:
 
 - **Inference**
   - A Nano-vLLM-based inference engine shared by all Uno models.
   - Linear sampling for high system throughput.
   - Tree sampling for high per-request throughput.
-  - Ready-to-run recipes for Uno Qwen3 8B, K2 Horizon 7B Uno, and K2
-    Horizon 0.9B Uno.
+  - Ready-to-run recipes for Uno Qwen3 8B, Uno 8B, and Uno 1B.
 - **Training**
   - A conditional-LoRA diffusion training pipeline for Uno Qwen3 8B.
   - OpenThoughts data preparation and progressive block-size curricula.
@@ -91,8 +90,8 @@ uno/
 │   └── run_slurm.sh            # Multi-node Slurm launcher
 ├── examples/
 │   ├── uno_qwen3_8B/           # Training, inference, and evaluation
-│   ├── uno_8B/                 # K2 Horizon 7B inference and evaluation
-│   └── uno_1B/                 # K2 Horizon 0.9B inference and evaluation
+│   ├── uno_8B/                 # Uno 8B inference and evaluation
+│   └── uno_1B/                 # Uno 1B inference and evaluation
 ├── pyproject.toml
 └── README.md
 ```
@@ -135,8 +134,8 @@ MAX_JOBS=16 python -m pip install --no-build-isolation .
 
 | Model | Uno checkpoint | Loading layout |
 | --- | --- | --- |
-| K2 Horizon 7B Uno | [IFM/K2-Horizon-7B-Uno](https://huggingface.co/IFM/K2-Horizon-7B-Uno) | Base model: `IFM/K2-Horizon-7B`; Uno repository contains the conditional LoRA adapter |
-| K2 Horizon 0.9B Uno | [IFM/K2-Horizon-0.9B-Uno](https://huggingface.co/IFM/K2-Horizon-0.9B-Uno) | Base model: `IFM/K2-Horizon-0.9B`; Uno repository contains the conditional LoRA adapter |
+| Uno 8B | [Uno 8B checkpoint](https://huggingface.co/IFM/K2-Horizon-7B-Uno) | [Base model](https://huggingface.co/IFM/K2-Horizon-7B); the Uno checkpoint contains the conditional LoRA adapter |
+| Uno 1B | [Uno 1B checkpoint](https://huggingface.co/IFM/K2-Horizon-0.9B-Uno) | [Base model](https://huggingface.co/IFM/K2-Horizon-0.9B); the Uno checkpoint contains the conditional LoRA adapter |
 | Uno Qwen3 8B | [s-sahoo/uno-qwen3-8B](https://huggingface.co/s-sahoo/uno-qwen3-8B) | Base weights are at the repository root; the conditional LoRA adapter is under `adapter/` |
 
 Public checkpoints can be downloaded without a Hugging Face token. A token is
@@ -151,8 +150,8 @@ or evaluation workflow.
 
 ### Training
 
-The public training recipe currently targets Uno Qwen3 8B. K2 Horizon Uno
-releases provide inference and evaluation recipes, but not K2 training
+The public training recipe currently targets Uno Qwen3 8B. The Uno 8B and Uno
+1B releases provide inference and evaluation recipes, but not training
 launchers.
 
 #### 1. Prepare the Training Data
@@ -195,29 +194,23 @@ The default curriculum spends half an epoch at each diffusion block size:
 | Reverse-KL weight | `0` |
 | TV weight | `1` |
 
-W&B logging is enabled by default. Run `wandb login` before training or set
-`WANDB_MODE=disabled`. Set `RESUME_FROM_CHECKPOINT` and reuse the original
-`RUN_NAME` to resume a run.
+Set `RESUME_FROM_CHECKPOINT` and reuse the original `RUN_NAME` to resume a run.
 
 ### Inference
 
-Use the model recipe that matches the checkpoint. For example, run free-form
-inference with Uno Qwen3 8B:
+Use the model recipe that matches the checkpoint. All three recipes call the
+same shared `inference.py` workflow:
 
 ```bash
+# Uno Qwen3 8B
 bash examples/uno_qwen3_8B/run_inference.sh \
   --prompt "Solve 2 + 2 and explain your reasoning."
-```
 
-The corresponding K2 Horizon commands use the same shared `inference.py`
-workflow:
-
-```bash
-# K2 Horizon 7B Uno
+# Uno 8B
 bash examples/uno_8B/run_inference.sh \
   --prompt "Solve 2 + 2 and explain your reasoning."
 
-# K2 Horizon 0.9B Uno
+# Uno 1B
 bash examples/uno_1B/run_inference.sh \
   --prompt "Solve 2 + 2 and explain your reasoning."
 ```
@@ -273,7 +266,7 @@ DATA_PARALLEL_SIZE=1 \
   bash examples/uno_qwen3_8B/run_eval.sh gsm8k
 ```
 
-Use the same interface for K2 Horizon models:
+Use the same interface for Uno 8B and Uno 1B:
 
 ```bash
 bash examples/uno_8B/run_eval.sh gsm8k
