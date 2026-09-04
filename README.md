@@ -30,19 +30,20 @@
   <img src="uno_results.png" alt="Uno training pipeline and benchmark results">
 </div>
 
-Uno is a diffusion-augmented language model with two pathways in a unified
-architecture:
+<br>
 
-- The autoregressive pathway uses the base autoregressive weights.
-- The diffusion pathway augments the base model with a conditional LoRA
-  adapter.
+Uno is a diffusion-augmented language model that preserves the distribution
+and quality of an autoregressive (AR) model while using diffusion to generate
+multiple tokens in parallel. Its parameters are decoupled into standard AR
+weights, trained with next-token prediction, and lightweight diffusion weights,
+learned through a low-overhead Diffusion Distillation stage and implemented
+here as a conditional LoRA adapter. This design can augment existing
+open-weight AR models and requires no separate draft model. At inference time,
+the $\Psi$-Spec family of samplers provides lossless acceleration: linear
+sampling targets high system throughput, while tree sampling targets high
+per-request throughput.
 
-Uno supports lossless speculative decoding through two $\Psi$-spec samplers:
-
-- **Linear sampling** for high system throughput.
-- **Tree sampling** for high per-request throughput.
-
-## What This Repository Provides
+## In This Repo, We Release
 
 - **Inference**
   - A Nano-vLLM-based inference engine shared by all Uno models.
