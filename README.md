@@ -1,6 +1,28 @@
-# [Uno](https://github.com/ifm-ai/uno)
-
-![Uno training pipeline and benchmark results](uno_results.png)
+<div align="center">
+  <h1><a href="https://github.com/ifm-ai/uno">Uno</a></h1>
+  <p>
+    <a href="https://s-sahoo.github.io">Subham Sekhar Sahoo</a>,
+    <a href="https://lingjiechen2.github.io">Lingjie Chen</a>,
+    <a href="https://drproduck.github.io">Khiem Pham</a>,
+    <a href="https://j-geuter.github.io">Jonathan Geuter</a>,
+    Junlin Chen,<br>
+    <a href="https://scholar.google.com/citations?user=ghpn6JkAAAAJ&amp;hl=en">Chaitanya Dwivedi</a>,
+    <a href="https://nightlessbaron.github.io">Varad Pimpalkhute</a>,
+    <a href="https://akhauriyash.github.io">Yash Akhauri</a>,
+    <a href="https://www.linkedin.com/in/alexander-moreno-ab151542/">Alexander Moreno</a>,
+    <a href="https://moonfolk.github.io">Mikhail Yurochkin</a>,<br>
+    <a href="https://zhentingwang.github.io">Zhenting Wang</a>,
+    <a href="https://scholar.google.com/citations?user=y_cwSKAAAAAJ&amp;hl=en">Mostafa Elhoushi</a>,
+    <a href="https://scholar.google.com/citations?user=JHUfMr0AAAAJ&amp;hl=en">Nolan Dey</a>,
+    <a href="https://sites.google.com/site/shaneabergsma/">Shane Bergsma</a>,
+    <a href="https://scholar.google.com/citations?user=wkbvCf0AAAAJ&amp;hl=en">Joel Hestness</a>,<br>
+    <a href="https://hwang595.github.io">Hongyi Wang</a>,
+    <a href="https://johnthickstun.com">John Thickstun</a>,
+    <a href="https://mbzuai.ac.ae/study/faculty/professor-eric-xing/">Eric Xing</a>,
+    <a href="https://hunterhector.github.io">Zhengzhong Liu</a>
+  </p>
+  <img src="uno_results.png" alt="Uno training pipeline and benchmark results">
+</div>
 
 [![arXiv](https://img.shields.io/badge/arXiv-coming%20soon-B31B1B.svg)](https://arxiv.org/abs/XXXX.XXXXX)
 [![K2 Horizon 7B Uno](https://img.shields.io/badge/Hugging%20Face-K2%20Horizon%207B%20Uno-FFD21E?logo=huggingface&logoColor=000)](https://huggingface.co/IFM/K2-Horizon-7B-Uno)
