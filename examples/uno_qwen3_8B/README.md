@@ -85,7 +85,7 @@ decoding and the Tree sampler with `(B, K, V) = (16, 32, 60)`. These numbers
 therefore describe that paper arm rather than the default linear command shown
 above.
 
-| Benchmark | Accuracy (%) | TPF |
+| Benchmark | Accuracy (%) | Tree Sampler TPF |
 | --- | ---: | ---: |
 | GSM8K | 96.1 | 3.56 |
 | MATH500 | 96.4 | 3.92 |
