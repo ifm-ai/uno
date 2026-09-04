@@ -33,20 +33,22 @@
 
 <br>
 
-We introduce **Uno**, a diffusion-augmented language model that preserves an
-autoregressive model's distribution and quality while generating multiple
-tokens in parallel. Uno augments standard AR weights with lightweight diffusion
-weights learned through Diffusion Distillation, requiring no separate draft
-model. At inference time, $\Psi$-Spec provides lossless acceleration through
-linear sampling for system throughput and tree sampling for per-request
-throughput.
+We introduce `Uno`, a diffusion-augmented LLM that 
+features two sets of weights:
+- **AR weights**: Trained using next-token prediction loss to define an AR distribution.
+- Diffusion weights: Trained to generate multiple tokens in parallel from the AR distribution.
 
-In this repo, we release:
+To sample from `Uno`, we propose **$\Psi$-Spec** sampler, which enables provably lossless multi-token prediction from the AR distribution.
+- Unlike speculative decoding methods, `Uno` does not require a separately trained draft model and achieves higher throughput across all batch sizes.
+- Unlike self-speculative deciding approaches, `Uno` is lossless. 
+
+
+In this repo, we release the code for:
 
 - **Inference**
-  - A Nano-vLLM-based inference engine shared by all Uno models.
-  - Linear sampling for high system throughput.
-  - Tree sampling for high per-request throughput.
+  - A Nano-vLLM-based inference engine for $\Psi$-Spec sampler.
+    - `Linear Sampler` for high system throughput.
+    - `Tree sampler` for high per-request throughput.
   - Ready-to-run recipes for
     [Uno Qwen3 8B](https://huggingface.co/s-sahoo/uno-qwen3-8B),
     [Uno 8B](https://huggingface.co/IFM/K2-Horizon-7B-Uno), and
