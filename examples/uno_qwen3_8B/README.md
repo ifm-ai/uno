@@ -13,10 +13,10 @@ recipe, and comparison with speculative and diffusion decoding baselines.
 
 ```text
 examples/uno_qwen3_8B/
-|-- run_inference.sh    # Free-form generation with the released bundle
-|-- run_eval.sh         # Benchmark generation and grading
-|-- run_train.sh        # Published Uno Qwen3 8B training launcher
-`-- README.md           # This guide
+├── run_inference.sh    # Free-form generation with the released bundle
+├── run_eval.sh         # Benchmark generation and grading
+├── run_train.sh        # Published Uno Qwen3 8B training launcher
+└── README.md           # This guide
 ```
 
 ## Inference
