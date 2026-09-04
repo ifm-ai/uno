@@ -261,10 +261,23 @@ bash examples/uno_8B/run_eval.sh gsm8k
 bash examples/uno_1B/run_eval.sh gsm8k
 ```
 
-To evaluate a different dataset, replace `gsm8k` with a supported benchmark
-identifier: `aime24`, `aime25`, `aime26`,
-`arc_challenge`, `gpqa_diamond`, `gsm8k`, `hle`, `humaneval`,
-`ifeval`, `lcr`, `math500`, `mbpp`, and `omniscience`.
+Supported benchmarks:
+
+- **Math:** [`aime24`](https://huggingface.co/datasets/hypaai/Hypa_AIME2024),
+  [`aime25`](https://huggingface.co/datasets/math-ai/aime25),
+  [`aime26`](https://huggingface.co/datasets/math-ai/aime26),
+  [`gsm8k`](https://github.com/openai/grade-school-math), and
+  [`math500`](https://huggingface.co/datasets/HuggingFaceH4/MATH-500).
+- **Knowledge:** [`arc_challenge`](https://allenai.org/data/arc),
+  [`gpqa_diamond`](https://github.com/idavidrein/gpqa),
+  [`hle`](https://github.com/centerforaisafety/hle), and
+  [`omniscience`](https://artificialanalysis.ai/evaluations/omniscience).
+- **Code:** [`humaneval`](https://github.com/openai/human-eval) and
+  [`mbpp`](https://github.com/google-research/google-research/tree/master/mbpp).
+- **Instruction and long-context reasoning:**
+  [`ifeval`](https://github.com/google-research/google-research/tree/master/instruction_following_eval)
+  and
+  [`lcr`](https://artificialanalysis.ai/evaluations/artificial-analysis-long-context-reasoning).
 
 #### 3. Evaluate the Full Suite
 
@@ -286,9 +299,7 @@ SBATCH_ARGS="--account=my-account --partition=my-partition" \
   bash evaluation/submit_suite.sh
 ```
 
-Set `MODEL_EXAMPLE` to `uno_qwen3_8B`, `uno_8B`, or `uno_1B`. A
-persistent pull-based launcher is also available at
-`evaluation/submit_pull_suite.sh`.
+Set `MODEL_EXAMPLE` to `uno_qwen3_8B`, `uno_8B`, or `uno_1B`.
 
 ## Acknowledgements
 
