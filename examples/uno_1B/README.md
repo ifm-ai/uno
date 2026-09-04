@@ -14,9 +14,9 @@ evaluation methodology used for the released Uno family.
 
 ```text
 examples/uno_1B/
-|-- run_inference.sh    # Free-form generation with the released checkpoint
-|-- run_eval.sh         # Benchmark generation and grading
-`-- README.md           # This guide
+├── run_inference.sh    # Free-form generation with the released checkpoint
+├── run_eval.sh         # Benchmark generation and grading
+└── README.md           # This guide
 ```
 
 This release provides inference and evaluation for Uno 1B. A corresponding
@@ -83,12 +83,11 @@ OpenAI-compatible endpoint. To generate without grading, set
 
 ## Evaluation Results
 
-The current [Uno paper](https://arxiv.org/abs/2609.04010) reports detailed
-accuracy, TPF, and throughput tables for Uno 8B and Uno Qwen3 8B, but does not
-provide a separate benchmark table for the released Uno 1B checkpoint. We do
-not copy results from another model size into this README. Model-specific
-results can be added here once they are released with their sampler, batch
-size, hardware, and grading protocol.
+Evaluation results for Uno 1B will be available soon. The current
+[Uno paper](https://arxiv.org/abs/2609.04010) reports detailed accuracy, TPF,
+and throughput tables for Uno 8B and Uno Qwen3 8B, but does not provide a
+separate benchmark table for the released Uno 1B checkpoint. Results from
+another model size are therefore not copied into this README.
 
 ## Training
 

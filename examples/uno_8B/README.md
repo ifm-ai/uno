@@ -14,9 +14,9 @@ details, and full evaluation protocol.
 
 ```text
 examples/uno_8B/
-|-- run_inference.sh    # Free-form generation with the released checkpoint
-|-- run_eval.sh         # Benchmark generation and grading
-`-- README.md           # This guide
+├── run_inference.sh    # Free-form generation with the released checkpoint
+├── run_eval.sh         # Benchmark generation and grading
+└── README.md           # This guide
 ```
 
 This release provides inference and evaluation for Uno 8B. A corresponding
