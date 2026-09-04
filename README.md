@@ -236,9 +236,15 @@ Missing public datasets are prepared automatically. They can also be prepared
 in advance:
 
 ```bash
+export UNO_EVAL_DATA_DIR=/path/to/uno-eval-data
+
 python -m evaluation.prepare_data \
-  --output-dir /path/to/uno-eval-data
+  --output-dir "${UNO_EVAL_DATA_DIR}"
 ```
+
+Keep `UNO_EVAL_DATA_DIR` set when running `run_eval.sh`. The evaluation runner
+will reuse the prepared JSONL files from this directory and will prepare any
+missing benchmark there automatically.
 
 Accept the terms for the gated
 [GPQA dataset](https://huggingface.co/datasets/Idavidrein/gpqa) and run
