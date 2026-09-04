@@ -1,11 +1,11 @@
 <div align="center">
-  <h1><a href="https://github.com/ifm-ai/uno">Uno</a></h1>
+  <h1><a href="https://s-sahoo.com/uno/">Unlocking Lossless Speedups in LLMs via Discrete Diffusion</a></h1>
   <p>
     <a href="https://s-sahoo.github.io">Subham Sekhar Sahoo</a>,
     <a href="https://lingjiechen2.github.io">Lingjie Chen</a>,
     <a href="https://drproduck.github.io">Khiem Pham</a>,
     <a href="https://j-geuter.github.io">Jonathan Geuter</a>,
-    Junlin Chen,<br>
+    <a href="https://www.linkedin.com/in/junlin110/">Junlin Chen</a>,<br>
     <a href="https://scholar.google.com/citations?user=ghpn6JkAAAAJ&amp;hl=en">Chaitanya Dwivedi</a>,
     <a href="https://nightlessbaron.github.io">Varad Pimpalkhute</a>,
     <a href="https://akhauriyash.github.io">Yash Akhauri</a>,
@@ -22,12 +22,13 @@
     <a href="https://hunterhector.github.io">Zhengzhong Liu</a>
   </p>
   <p>
-    <a href="https://arxiv.org/abs/XXXX.XXXXX"><img src="https://img.shields.io/badge/arXiv-coming%20soon-B31B1B.svg" alt="arXiv"></a>
+    <a href="https://arxiv.org/abs/2609.04010"><img src="https://img.shields.io/badge/arXiv-2609.04010-B31B1B.svg" alt="arXiv"></a>
+    <a href="https://s-sahoo.com/uno/"><img src="https://img.shields.io/badge/Project-Page-4B5563.svg" alt="Project Page"></a>
     <a href="https://huggingface.co/IFM/K2-Horizon-7B-Uno"><img src="https://img.shields.io/badge/Hugging%20Face-Uno%208B-FFD21E?logo=huggingface&amp;logoColor=000" alt="Uno 8B"></a>
     <a href="https://huggingface.co/IFM/K2-Horizon-0.9B-Uno"><img src="https://img.shields.io/badge/Hugging%20Face-Uno%201B-FFD21E?logo=huggingface&amp;logoColor=000" alt="Uno 1B"></a>
     <a href="https://huggingface.co/s-sahoo/uno-qwen3-8B"><img src="https://img.shields.io/badge/Hugging%20Face-Uno%20Qwen3%208B-FFD21E?logo=huggingface&amp;logoColor=000" alt="Uno Qwen3 8B"></a>
   </p>
-  <img src="uno_results.png" alt="Uno training pipeline and benchmark results">
+  <a href="https://s-sahoo.com/uno/"><img src="uno_results.png" alt="Uno training pipeline and evaluation results"></a>
 </div>
 
 <br>
@@ -225,7 +226,9 @@ time, TPS, decoder statistics, and TPF. Common controls include
 
 The evaluation workflow uses canonical benchmark settings from
 `evaluation/benchmarks.py`. Generation and grading are separate internally,
-while each model recipe runs both stages through one command.
+while each model recipe runs both stages through one command. See the
+[Uno project page](https://s-sahoo.com/uno/) for the reported evaluation
+results.
 
 #### 1. Prepare Evaluation Data
 
@@ -308,10 +311,13 @@ for attribution and license notices.
 ## Citation
 
 ```bibtex
-@article{uno2026,
-  title   = {},
-  author  = {},
-  journal = {},
-  year    = {2026}
+@misc{sahoo2026unlockinglosslessspeedupsllms,
+      title={Unlocking Lossless Speedups in LLMs via Discrete Diffusion},
+      author={Subham Sekhar Sahoo and Lingjie Chen and Khiem Pham and Jonathan Geuter and Chaitanya Dwivedi and Varad Pimpalkhute and Yash Akhauri and Alexander Moreno and Mikhail Yurochkin and Zhenting Wang and Mostafa Elhoushi and Nolan Dey and Shane Bergsma and Joel Hestness and John Thickstun and Eric Xing and Zhengzhong Liu},
+      year={2026},
+      eprint={2609.04010},
+      archivePrefix={arXiv},
+      primaryClass={cs.LG},
+      url={https://arxiv.org/abs/2609.04010},
 }
 ```
