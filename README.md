@@ -33,16 +33,13 @@
 
 <br>
 
-We introduce **Uno**, a diffusion-augmented language model that preserves the
-distribution and quality of an autoregressive (AR) model while using diffusion
-to generate multiple tokens in parallel. Its parameters are decoupled into
-standard AR weights, trained with next-token prediction, and lightweight
-diffusion weights, learned through a low-overhead Diffusion Distillation stage
-and implemented here as a conditional LoRA adapter. This design can augment
-existing open-weight AR models and requires no separate draft model. At inference time,
-the $\Psi$-Spec family of samplers provides lossless acceleration: linear
-sampling targets high system throughput, while tree sampling targets high
-per-request throughput.
+We introduce **Uno**, a diffusion-augmented language model that preserves an
+autoregressive model's distribution and quality while generating multiple
+tokens in parallel. Uno augments standard AR weights with lightweight diffusion
+weights learned through Diffusion Distillation, requiring no separate draft
+model. At inference time, $\Psi$-Spec provides lossless acceleration through
+linear sampling for system throughput and tree sampling for per-request
+throughput.
 
 In this repo, we release:
 
@@ -81,21 +78,18 @@ In this repo, we release:
 
 The repository is organized around the workflows users run:
 
-- [`nano_vllm_uno/`](nano_vllm_uno) is the inference engine optimized for Uno,
-  including model execution, KV-cache management, and lossless linear and tree
-  sampling.
-- [`generation.py`](generation.py) contains the shared model loading,
-  conditional-LoRA attachment, prompt formatting, generation, and TPF/TPS
-  accounting used by both inference and evaluation.
-- [`inference.py`](inference.py) is the command-line entry point for generating
-  from free-form prompts with linear or tree sampling.
-- [`evaluation/`](evaluation) defines the benchmark protocols, dataset loaders,
-  generation pipeline, parsers, and benchmark-specific graders.
-- [`training/`](training) contains data preparation, conditional-LoRA training,
-  diffusion objectives, curriculum configuration, and checkpointing.
-- [`examples/`](examples) provides directly executable training, inference, and
-  evaluation recipes for Uno Qwen3 8B, Uno 8B, and Uno 1B. Each model directory
-  supplies only its model-specific defaults and calls the shared workflows.
+- [`nano_vllm_uno/`](nano_vllm_uno) : Inference engine optimized for Uno, with
+  model execution, KV-cache management, and lossless linear and tree sampling.
+- [`generation.py`](generation.py) : Shared model loading, conditional-LoRA
+  attachment, prompt formatting, generation, and TPF/TPS accounting.
+- [`inference.py`](inference.py) : Free-form prompt inference with linear or
+  tree sampling.
+- [`evaluation/`](evaluation) : Benchmark protocols, dataset loaders,
+  generation, parsers, and benchmark-specific graders.
+- [`training/`](training) : Data preparation, conditional-LoRA training,
+  diffusion objectives, curricula, and checkpointing.
+- [`examples/`](examples) : Model-specific training, inference, and evaluation
+  recipes that call the shared workflows.
 
 ## Getting Started
 
@@ -274,7 +268,16 @@ identifier: `aime24`, `aime25`, `aime26`,
 
 #### 3. Evaluate the Full Suite
 
-Submit one independent Slurm job per benchmark:
+Run the complete suite sequentially without Slurm:
+
+```bash
+MODEL_EXAMPLE=uno_qwen3_8B \
+RESULTS_ROOT=/path/to/results \
+DATA_PARALLEL_SIZE=1 \
+  bash evaluation/run_suite.sh
+```
+
+Alternatively, submit one independent Slurm job per benchmark:
 
 ```bash
 MODEL_EXAMPLE=uno_qwen3_8B \
