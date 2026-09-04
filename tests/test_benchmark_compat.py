@@ -12,6 +12,7 @@ import torch
 
 from nano_vllm_uno.engine.noise import _noise_bounds
 from nano_vllm_uno.engine.llm_engine import _trim_terminal_stop_tokens
+from nano_vllm_uno.engine.two_pass_decoding import _sparse_verify_tensors
 from evaluation.benchmarks import BENCHMARKS
 from evaluation.graders.code import grade_humaneval_row
 from evaluation.graders.lcb import score_lcbv6
@@ -20,7 +21,10 @@ from evaluation.parsers import (
     parse_code_completion,
     parse_gpqa_answer,
 )
-from nano_vllm_uno.layers.sampler import build_sparse_top_k_probs
+from nano_vllm_uno.layers.sampler import (
+    build_sparse_top_k_probs,
+    build_sparse_top_p_probs,
+)
 from nano_vllm_uno.sampling_params import SamplingParams
 from evaluation.run import format_prompt
 from generation import resolve_model_sources
@@ -68,25 +72,56 @@ class BenchmarkCompatibilityTest(unittest.TestCase):
         self.assertEqual(
             tuple(BENCHMARKS),
             (
-                "gsm8k",
-                "math500",
                 "aime24",
                 "aime25",
                 "aime26",
-                "humaneval",
-                "mbpp",
-                "lcbv6",
-                "gpqa",
+                "arc_challenge",
                 "gpqa_diamond",
-                "mmlu_pro",
+                "gsm8k",
+                "hle",
+                "humaneval",
                 "ifeval",
                 "lcr",
+                "math500",
+                "mbpp",
+                "omniscience",
             ),
         )
         self.assertTrue(all(config.expected_rows > 0 for config in BENCHMARKS.values()))
-        self.assertTrue(
-            all(not hasattr(config, "max_tokens") for config in BENCHMARKS.values())
-        )
+        self.assertTrue(all(config.top_k is None for config in BENCHMARKS.values()))
+        self.assertTrue(all(config.top_p == 0.95 for config in BENCHMARKS.values()))
+
+    def test_canonical_protocol_parameters(self):
+        expected = {
+            "aime24": (10, 1.0, 500000, 500000),
+            "aime25": (32, 1.0, 500000, 500000),
+            "aime26": (32, 1.0, 500000, 500000),
+            "arc_challenge": (1, 1.0, 131072, 262144),
+            "gpqa_diamond": (5, 0.6, 262144, 262144),
+            "gsm8k": (2, 1.0, 131072, 262144),
+            "hle": (1, 1.0, 262144, 262144),
+            "humaneval": (2, 1.0, 131072, 262144),
+            "ifeval": (1, 1.0, 500000, 500000),
+            "lcr": (1, 1.0, 32768, 262144),
+            "math500": (2, 1.0, 131072, 262144),
+            "mbpp": (2, 1.0, 131072, 262144),
+            "omniscience": (1, 1.0, 131072, 262144),
+        }
+        for name, values in expected.items():
+            config = BENCHMARKS[name]
+            self.assertEqual(
+                (config.num_samples, config.temperature, config.max_tokens, config.max_model_len),
+                values,
+            )
+            self.assertEqual(config.instruction, "")
+            self.assertEqual(config.chat_template_kwargs, {"reasoning_effort": "high"})
+
+    def test_unlabeled_protocol_override_is_rejected(self):
+        from evaluation.run import _resolve_protocol_defaults, parse_args
+
+        args = parse_args(["--benchmark", "gpqa-diamond", "--model", "model", "--temperature", "1"])
+        with self.assertRaisesRegex(ValueError, "--protocol-arm"):
+            _resolve_protocol_defaults(args, BENCHMARKS["gpqa_diamond"])
 
     def test_canonical_suite_has_a_launcher_for_every_benchmark(self):
         examples = Path(__file__).resolve().parents[1] / "examples"
@@ -129,16 +164,10 @@ class BenchmarkCompatibilityTest(unittest.TestCase):
             self.assertIn("evaluation.run", (directory / "run_eval.sh").read_text())
             self.assertIn("inference.py", (directory / "run_inference.sh").read_text())
 
-    def test_k2_horizon_linear_wrappers_match_reference_protocol(self):
+    def test_k2_horizon_wrapper_defers_to_canonical_protocol(self):
         repository = Path(__file__).resolve().parents[1]
         runner = repository / "examples" / "uno_8B" / "run_eval.sh"
-        cases = {
-            "gsm8k": (262144, 131072),
-            "math500": (262144, 131072),
-            "aime24": (262144, 131072),
-            "aime25": (500000, 500000),
-            "aime26": (500000, 500000),
-        }
+        cases = ("gsm8k", "math500", "aime24", "aime25", "aime26")
 
         with tempfile.TemporaryDirectory() as directory:
             temporary = Path(directory)
@@ -149,7 +178,7 @@ class BenchmarkCompatibilityTest(unittest.TestCase):
             )
             fake_python.chmod(0o755)
 
-            for benchmark, (context, max_tokens) in cases.items():
+            for benchmark in cases:
                 output = temporary / f"{benchmark}.arguments"
                 subprocess.run(
                     [str(runner), benchmark],
@@ -171,23 +200,53 @@ class BenchmarkCompatibilityTest(unittest.TestCase):
 
                 self.assertEqual(value("--benchmark"), benchmark)
                 self.assertEqual(value("--data-parallel-size"), "8")
-                self.assertEqual(value("--max-num-seqs"), "4")
-                self.assertEqual(value("--max-model-len"), str(context))
-                self.assertEqual(value("--max-num-batched-tokens"), str(context))
-                self.assertEqual(value("--max-tokens"), str(max_tokens))
-                self.assertEqual(value("--num-samples"), "1")
-                self.assertEqual(value("--temperature"), "1.0")
-                self.assertEqual(value("--top-k"), "50")
-                self.assertEqual(value("--top-p"), "0.95")
                 self.assertEqual(value("--attention-backend"), "fa3")
                 self.assertEqual(value("--diffusion-block-size"), "8")
                 self.assertEqual(value("--mask-token-id"), "250624")
                 self.assertEqual(value("--stop-token-ids"), "250019,1")
-                self.assertEqual(value("--instruction"), "")
+                for protocol_flag in (
+                    "--max-num-seqs", "--max-model-len",
+                    "--max-num-batched-tokens", "--max-tokens",
+                    "--num-samples", "--temperature", "--top-k", "--top-p",
+                    "--instruction",
+                ):
+                    self.assertNotIn(protocol_flag, arguments)
                 self.assertEqual(
                     BENCHMARKS[benchmark].chat_template_kwargs,
                     {"reasoning_effort": "high"},
                 )
+
+    def test_exact_top_p_only_distribution(self):
+        logits = torch.tensor([[4.0, 3.0, 2.0, 1.0]])
+        indices, probs = build_sparse_top_p_probs(logits, 1.0, 0.8, initial_k=2)
+        dense = torch.zeros_like(logits)
+        dense.scatter_(1, indices, probs)
+        full = torch.softmax(logits, dim=-1)
+        expected = torch.tensor([[full[0, 0], full[0, 1], 0.0, 0.0]])
+        expected /= expected.sum(dim=-1, keepdim=True)
+        torch.testing.assert_close(dense, expected)
+        SamplingParams(temperature=1.0, top_p=0.95, top_k=None)
+
+    def test_top_p_only_verifier_supports_variable_draft_support(self):
+        eager_fn = getattr(
+            _sparse_verify_tensors,
+            "_torchdynamo_orig_callable",
+            _sparse_verify_tensors,
+        )
+        accepted, correction = eager_fn(
+            clean_ids=torch.tensor([[0, 1, 2]]),
+            clean_probs=torch.tensor([[0.6, 0.3, 0.1]]),
+            draft_ids=torch.tensor([[0, 2]]),
+            draft_probs=torch.tensor([[0.5, 0.5]]),
+            spec_vals=torch.tensor([0]),
+            accept_random=torch.tensor([0.9]),
+            vocab_size=3,
+        )
+        self.assertEqual(accepted.tolist(), [True])
+        torch.testing.assert_close(
+            correction,
+            torch.tensor([[0.25, 0.75, 0.0]]),
+        )
 
     def test_copied_slurm_wrapper_uses_exported_repository_root(self):
         repository = Path(__file__).resolve().parents[1]
@@ -280,7 +339,7 @@ class BenchmarkCompatibilityTest(unittest.TestCase):
             )
             self.assertEqual(
                 output.read_text(encoding="utf-8").splitlines(),
-                ["64", "1,2,4,8,16,32,64"],
+                ["", ""],
             )
 
     def test_qwen_entrypoint_resolves_single_repo_bundle(self):

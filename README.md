@@ -80,15 +80,36 @@ Every run writes `generations.jsonl`, `generation_summary.json`, `grades.jsonl`,
 and `scores.json`. The summary includes output tokens per second and decoder
 tokens per sequence forward (TPF).
 
-The built-in suite includes GSM8K, MATH500, AIME 2024--2026, HumanEval, MBPP,
-LiveCodeBench v6, GPQA, GPQA-Diamond, MMLU-Pro, IFEval, and AA-LCR. AA-LCR uses
-an OpenAI-compatible external judge and caller-supplied JSONL data via `--data`.
-It requires:
+The built-in 13-task suite includes AIME 2024--2026, ARC-Challenge,
+GPQA-Diamond, GSM8K, Humanity's Last Exam, HumanEval, IFEval, AA-LCR,
+MATH500, MBPP, and AA-Omniscience. Its defaults are pinned to the
+`K2V3 Eval Protocol` dated 2026-09-01: no added system instruction,
+`reasoning_effort=high`, exact per-task sample counts, contexts, output budgets,
+temperatures, `top_p=0.95`, and top-p-only sampling (`top_k=None`). A deliberate
+override must be labeled with `--protocol-arm NAME`.
+
+The historical input JSONL files are verified by row count and SHA-256. Use an
+exact artifact bundle when reproducing an existing result (flat filenames and
+the original `LLM360/eval-360-sources` directory layout are both accepted):
 
 ```bash
-export UNO_LCR_JUDGE_URL=http://judge-host:8000/v1
-export UNO_LCR_JUDGE_MODEL=judge-model-name
-export UNO_LCR_JUDGE_API_KEY=optional-token
+python -m evaluation.prepare_data --source-dir /path/to/protocol-bundle
+```
+
+Without `--source-dir`, preparation attempts the pinned
+`LLM360/eval-360-sources@f1d3a57020a52de762e73faba260ed15d9a8b6d7` revision.
+That repository may require authentication, and some currently hosted files do
+not byte-match the historical artifacts. The environment variable
+`UNO_EVAL_PROTOCOL_SOURCE_DIR` is equivalent to the command-line option.
+
+HLE exact-answer rows require the GPT-5.5 no-tools equality judge with medium
+reasoning effort. AA-LCR and AA-Omniscience require a locally served
+GLM-5.2-FP8 OpenAI-compatible endpoint. Set the judge for these tasks with:
+
+```bash
+export JUDGE_BASE_URL=http://judge-host:8000/v1
+export JUDGE_MODEL=path-or-model-name
+export JUDGE_API_KEY=optional-token
 ```
 
 Code benchmark graders execute model-generated Python. Run them only in an

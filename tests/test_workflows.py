@@ -82,7 +82,10 @@ class EvaluationWorkflowTest(unittest.TestCase):
         self, _tokenizer, _tokens, run_generation
     ):
         run_generation.return_value = (
-            [{"text": "4", "token_ids": [4], "stats": {"accepts": 1, "forwards": 1}}],
+            [
+                {"text": "4", "token_ids": [4], "stats": {"accepts": 1, "forwards": 1}},
+                {"text": "4", "token_ids": [4], "stats": {"accepts": 1, "forwards": 1}},
+            ],
             {
                 "total_output_tokens": 1,
                 "elapsed_seconds": 1.0,
@@ -122,14 +125,24 @@ class EvaluationWorkflowTest(unittest.TestCase):
                     str(summary),
                     "--limit",
                     "1",
+                    "--protocol-arm",
+                    "unit-test-smoke",
                     "--skip-grading",
                     "--no-progress",
                 ]
             )
-            self.assertEqual(len(output.read_text().splitlines()), 1)
+            self.assertEqual(len(output.read_text().splitlines()), 2)
             self.assertEqual(
-                json.loads(summary.read_text())["num_generations"], 1
+                json.loads(summary.read_text())["num_generations"], 2
             )
+
+    def test_ifeval_strips_k2_private_thinking(self):
+        from evaluation.graders.ifeval import _strip_thinking
+
+        self.assertEqual(
+            _strip_thinking("hidden reasoning</ifm|think>visible answer"),
+            "visible answer",
+        )
 
 
 class LcrGraderTest(unittest.TestCase):

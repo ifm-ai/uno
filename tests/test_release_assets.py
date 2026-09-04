@@ -110,7 +110,10 @@ class PublicDatasetBuilderTest(unittest.TestCase):
         parse_args = runpy.run_path(str(script))["parse_args"]
 
         self.assertEqual(parse_args([]).benchmarks, [])
-        self.assertEqual(parse_args(["gpqa-main"]).benchmarks, ["gpqa"])
+        self.assertEqual(
+            parse_args(["arc-challenge"]).benchmarks,
+            ["arc_challenge"],
+        )
 
     def test_all_canonical_paths_use_the_public_data_cache(self):
         self.assertTrue(

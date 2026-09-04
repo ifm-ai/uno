@@ -57,10 +57,10 @@ class PullSuiteTest(unittest.TestCase):
         ):
             settings = SuiteSettings.from_env()
 
-        self.assertEqual(settings.max_num_seqs, 64)
+        self.assertEqual(settings.max_num_seqs, 4)
         self.assertEqual(
             settings.cuda_graph_batch_sizes,
-            (1, 2, 4, 8, 16, 32, 64),
+            (1, 2, 4),
         )
 
     def test_cuda_graph_batch_ladder_includes_non_power_of_two_limit(self):
@@ -98,6 +98,7 @@ class PullSuiteTest(unittest.TestCase):
             hf_local_files_only=False,
             results_root=root / "results",
             run_name="smoke",
+            protocol_arm=None,
             benchmarks=("smoke",),
             data_root=None,
             num_samples=1,
