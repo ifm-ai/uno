@@ -128,9 +128,9 @@ MAX_JOBS=16 python -m pip install --no-build-isolation .
 
 | Model | Base model | Uno weights |
 | --- | --- | --- |
-| Uno 8B | The base model is [IFM/K2-Horizon-7B](https://huggingface.co/IFM/K2-Horizon-7B) | The conditional LoRA adapter is available from the [Uno 8B checkpoint](https://huggingface.co/IFM/K2-Horizon-7B-Uno) |
-| Uno 1B | The base model is [IFM/K2-Horizon-0.9B](https://huggingface.co/IFM/K2-Horizon-0.9B) | The conditional LoRA adapter is available from the [Uno 1B checkpoint](https://huggingface.co/IFM/K2-Horizon-0.9B-Uno) |
-| Uno Qwen3 8B | The base weights are at the root of [s-sahoo/uno-qwen3-8B](https://huggingface.co/s-sahoo/uno-qwen3-8B) | The conditional LoRA adapter is in the same repository under `adapter/` |
+| Uno 8B | [IFM/K2-Horizon-7B](https://huggingface.co/IFM/K2-Horizon-7B) | [IFM/K2-Horizon-7B-Uno](https://huggingface.co/IFM/K2-Horizon-7B-Uno) |
+| Uno 1B | [IFM/K2-Horizon-0.9B](https://huggingface.co/IFM/K2-Horizon-0.9B) | [IFM/K2-Horizon-0.9B-Uno](https://huggingface.co/IFM/K2-Horizon-0.9B-Uno) |
+| Uno Qwen3 8B | [s-sahoo/uno-qwen3-8B](https://huggingface.co/s-sahoo/uno-qwen3-8B) | [`adapter/`](https://huggingface.co/s-sahoo/uno-qwen3-8B/tree/main/adapter) |
 
 Public checkpoints can be downloaded without a Hugging Face token. A token is
 still required for gated datasets such as GPQA and for any private or gated
@@ -250,18 +250,19 @@ Accept the terms for the gated
 
 #### 2. Evaluate One Benchmark
 
-For example, generate and grade GSM8K with Uno Qwen3 8B on one GPU:
+Set the shared output and parallelism options, then choose the model recipe:
 
 ```bash
-RESULTS_ROOT=/path/to/results \
-DATA_PARALLEL_SIZE=1 \
-  bash examples/uno_qwen3_8B/run_eval.sh gsm8k
-```
+export RESULTS_ROOT=/path/to/results
+export DATA_PARALLEL_SIZE=1
 
-Use the same interface for Uno 8B and Uno 1B:
+# Uno Qwen3 8B
+bash examples/uno_qwen3_8B/run_eval.sh gsm8k
 
-```bash
+# Uno 8B
 bash examples/uno_8B/run_eval.sh gsm8k
+
+# Uno 1B
 bash examples/uno_1B/run_eval.sh gsm8k
 ```
 
