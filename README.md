@@ -163,7 +163,8 @@ The following is a single-GPU command. Gradient accumulation preserves the
 released global batch size of 128:
 
 ```bash
-python -m training.train \
+torchrun --standalone --nproc_per_node=1 \
+  -m training.train \
   --dataset-path /path/to/openthoughts-uno-4095 \
   --output-dir /path/to/uno-training \
   --curriculum training/configs/uno_3epoch_curriculum.yaml \
