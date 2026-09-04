@@ -21,6 +21,7 @@ elif [[ "${BENCHMARK}" =~ ^(hle|lcr|aa-lcr|omniscience|aa-omniscience)$ ]]; then
 fi
 
 exec "${PYTHON:-python}" -m evaluation.run \
+  "$@" \
   --benchmark "${BENCHMARK}" \
   --model IFM/K2-Horizon-0.9B \
   --model-revision ee770e713760cf6350e4322cdbbff91a163b7d70 \
@@ -35,5 +36,4 @@ exec "${PYTHON:-python}" -m evaluation.run \
   --diffusion-block-size 8 \
   --mask-token-id 64256 \
   --stop-token-ids 64019,1 \
-  "${GRADE_ARGS[@]}" \
-  "$@"
+  "${GRADE_ARGS[@]}"
