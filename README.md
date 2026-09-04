@@ -281,22 +281,13 @@ Supported benchmarks:
 
 #### 3. Evaluate the Full Suite
 
-Run the complete suite sequentially without Slurm:
+Run the complete suite sequentially:
 
 ```bash
 MODEL_EXAMPLE=uno_qwen3_8B \
 RESULTS_ROOT=/path/to/results \
 DATA_PARALLEL_SIZE=1 \
   bash evaluation/run_suite.sh
-```
-
-Alternatively, submit one independent Slurm job per benchmark:
-
-```bash
-MODEL_EXAMPLE=uno_qwen3_8B \
-RESULTS_ROOT=/path/to/results \
-SBATCH_ARGS="--account=my-account --partition=my-partition" \
-  bash evaluation/submit_suite.sh
 ```
 
 Set `MODEL_EXAMPLE` to `uno_qwen3_8B`, `uno_8B`, or `uno_1B`.
