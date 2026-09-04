@@ -33,13 +33,13 @@
 
 <br>
 
-**Uno** is a diffusion-augmented language model that preserves the distribution
-and quality of an autoregressive (AR) model while using diffusion to generate
-multiple tokens in parallel. Its parameters are decoupled into standard AR
-weights, trained with next-token prediction, and lightweight diffusion weights,
-learned through a low-overhead Diffusion Distillation stage and implemented
-here as a conditional LoRA adapter. This design can augment existing
-open-weight AR models and requires no separate draft model. At inference time,
+We introduce **Uno**, a diffusion-augmented language model that preserves the
+distribution and quality of an autoregressive (AR) model while using diffusion
+to generate multiple tokens in parallel. Its parameters are decoupled into
+standard AR weights, trained with next-token prediction, and lightweight
+diffusion weights, learned through a low-overhead Diffusion Distillation stage
+and implemented here as a conditional LoRA adapter. This design can augment
+existing open-weight AR models and requires no separate draft model. At inference time,
 the $\Psi$-Spec family of samplers provides lossless acceleration: linear
 sampling targets high system throughput, while tree sampling targets high
 per-request throughput.
@@ -81,6 +81,9 @@ In this repo, we release:
 
 The repository is organized around the workflows users run:
 
+- [`nano_vllm_uno/`](nano_vllm_uno) is the inference engine optimized for Uno,
+  including model execution, KV-cache management, and lossless linear and tree
+  sampling.
 - [`generation.py`](generation.py) contains the shared model loading,
   conditional-LoRA attachment, prompt formatting, generation, and TPF/TPS
   accounting used by both inference and evaluation.
@@ -130,7 +133,7 @@ MAX_JOBS=16 python -m pip install --no-build-isolation .
 | --- | --- | --- |
 | Uno 8B | [IFM/K2-Horizon-7B](https://huggingface.co/IFM/K2-Horizon-7B) | [IFM/K2-Horizon-7B-Uno](https://huggingface.co/IFM/K2-Horizon-7B-Uno) |
 | Uno 1B | [IFM/K2-Horizon-0.9B](https://huggingface.co/IFM/K2-Horizon-0.9B) | [IFM/K2-Horizon-0.9B-Uno](https://huggingface.co/IFM/K2-Horizon-0.9B-Uno) |
-| Uno Qwen3 8B | [s-sahoo/uno-qwen3-8B](https://huggingface.co/s-sahoo/uno-qwen3-8B) | [`adapter/`](https://huggingface.co/s-sahoo/uno-qwen3-8B/tree/main/adapter) |
+| Uno Qwen3 8B | [s-sahoo/uno-qwen3-8B](https://huggingface.co/s-sahoo/uno-qwen3-8B) | [s-sahoo/uno-qwen3-8B/adapter](https://huggingface.co/s-sahoo/uno-qwen3-8B/tree/main/adapter) |
 
 Public checkpoints can be downloaded without a Hugging Face token. A token is
 still required for gated datasets such as GPQA and for any private or gated
@@ -226,9 +229,9 @@ time, TPS, decoder statistics, and TPF. Common controls include
 
 The evaluation workflow uses canonical benchmark settings from
 `evaluation/benchmarks.py`. Generation and grading are separate internally,
-while each model recipe runs both stages through one command. See the
-[Uno project page](https://s-sahoo.com/uno/) for the reported evaluation
-results.
+while each model recipe runs both stages through one command. Evaluation
+results are provided in each model-specific subdirectory under
+[`examples/`](examples).
 
 #### 1. Prepare Evaluation Data
 
@@ -245,14 +248,6 @@ python -m evaluation.prepare_data \
 Keep `UNO_EVAL_DATA_DIR` set when running `run_eval.sh`. The evaluation runner
 will reuse the prepared JSONL files from this directory and will prepare any
 missing benchmark there automatically.
-
-Accept the terms for the gated
-[GPQA dataset](https://huggingface.co/datasets/Idavidrein/gpqa) and run
-`hf auth login` before preparing GPQA.
-
-> [!WARNING]
-> HumanEval and MBPP grading execute model-generated Python. Run coding
-> evaluations only in an isolated, secure sandbox.
 
 #### 2. Evaluate One Benchmark
 
@@ -272,7 +267,8 @@ bash examples/uno_8B/run_eval.sh gsm8k
 bash examples/uno_1B/run_eval.sh gsm8k
 ```
 
-The available benchmark names are `aime24`, `aime25`, `aime26`,
+To evaluate a different dataset, replace `gsm8k` with a supported benchmark
+identifier: `aime24`, `aime25`, `aime26`,
 `arc_challenge`, `gpqa_diamond`, `gsm8k`, `hle`, `humaneval`,
 `ifeval`, `lcr`, `math500`, `mbpp`, and `omniscience`.
 
