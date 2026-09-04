@@ -130,12 +130,19 @@ def parse_think_suffix(generation: str | None) -> str | None:
 def parse_code_completion(generation: str | None) -> str | None:
     if generation is None:
         return None
-    # Strip an optional terminating Qwen chat token.
-    text = re.sub(r"(?:<\|im_end\|>|<\|endoftext\|>)\s*$", "", generation)
-    think_match = re.search(r"</think>\n*", text)
+    text = re.sub(
+        r"(?:<\|(?:ifm\|)?im_end\|>|<\|endoftext\|>)\s*$",
+        "",
+        generation,
+    )
+    think_match = re.search(
+        r"</(?:think|ifm\|think)>\s*",
+        text,
+        flags=re.IGNORECASE,
+    )
     if think_match:
         text = text[think_match.end() :]
-    elif re.match(r"\s*<think>", text):
+    elif re.match(r"\s*<(?:think|ifm\|think)>", text, flags=re.IGNORECASE):
         fence = re.search(r"```(?:python|py)?\s*\n(.*?)```", text, flags=re.DOTALL)
         if fence:
             text = fence.group(1)
@@ -158,10 +165,14 @@ def normalize_mc_match(value: str | None) -> str | None:
 
 
 _MC_EMPHASIS = r"(?:\*\*|__|`)?"
-_MC_CHOICE = r"([A-J1-5])"
+_MC_CHOICE = r"([A-E1-5])"
 _MC_LINE_SCAN_LIMIT = 96
 _MC_TAIL_SCAN_CHARS = 4096
-_THINK_CLOSE_RE = re.compile(r"</think[^>]*>", flags=re.IGNORECASE)
+_THINK_CLOSE_RE = re.compile(r"</(?:ifm\|)?think[^>]*>", flags=re.IGNORECASE)
+_TERMINAL_CHAT_MARKER_RE = re.compile(
+    r"(?:<\|(?:ifm\|)?im_end\|>|<\|endoftext\|>)\s*$",
+    flags=re.IGNORECASE,
+)
 
 _MC_TAG_PATTERNS = (
     re.compile(
@@ -173,16 +184,6 @@ _MC_TAG_PATTERNS = (
         flags=re.IGNORECASE,
     ),
     re.compile(rf"\\(?:boxed|fbox)\s*\{{\s*{_MC_CHOICE}\s*\}}", flags=re.IGNORECASE),
-    re.compile(
-        rf"\\(?:boxed|fbox)\s*\{{\s*\\text\s*\{{\s*{_MC_CHOICE}\s*\}}\s*\}}",
-        flags=re.IGNORECASE,
-    ),
-)
-
-_MC_FINAL_OPTION_LINE_PATTERN = re.compile(
-    rf"^\s*{_MC_EMPHASIS}\s*[\(\[]?\s*{_MC_CHOICE}\s*[\)\]]?"
-    rf"\s*[.):-]\s+.+$",
-    flags=re.IGNORECASE,
 )
 
 _MC_STRONG_LINE_PATTERNS = (
@@ -210,26 +211,15 @@ _MC_WEAK_LINE_PATTERNS = (
         flags=re.IGNORECASE,
     ),
     re.compile(
-        rf"\b(?:match(?:es|ed)?|coincides?\s+with|corresponds?\s+to|"
-        rf"gives?|yields?|confirms?)\s+(?:option|choice)\s*{_MC_EMPHASIS}"
-        rf"\s*[\(\[]?\s*{_MC_CHOICE}\s*[\)\]]?\s*{_MC_EMPHASIS}",
-        flags=re.IGNORECASE,
-    ),
-    re.compile(
-        rf"\bonly\s+(?:option\s*)?{_MC_EMPHASIS}\s*[\(\[]?\s*"
-        rf"{_MC_CHOICE}\s*[\)\]]?\s*{_MC_EMPHASIS}",
-        flags=re.IGNORECASE,
-    ),
-    re.compile(
         rf"\b(?:option|choice)\s*{_MC_EMPHASIS}\s*[\(\[]?\s*{_MC_CHOICE}\s*[\)\]]?\s*{_MC_EMPHASIS}\s+(?:is|would\s+be|remains?|works?|fits?|correct|best|right|compatible|consistent|larger)\b",
         flags=re.IGNORECASE,
     ),
-    re.compile(
-        rf"\b{_MC_EMPHASIS}\s*[\(\[]?\s*{_MC_CHOICE}\s*[\)\]]?"
-        rf"\s*{_MC_EMPHASIS}\s+is\s+"
-        rf"(?:correct|best|right|compatible|consistent)\b",
-        flags=re.IGNORECASE,
-    ),
+)
+
+_MC_POST_THINK_LEADING_CHOICE = re.compile(
+    rf"^\s*(?:final\s+(?:answer|choice)\s*[:=-]?\s*)?(?:option\s*)?"
+    rf"[\(\[]?\s*{_MC_CHOICE}(?=[\s\)\].,:;!\-]|$)",
+    flags=re.IGNORECASE,
 )
 
 
@@ -270,32 +260,10 @@ def _extract_mc_from_line(line: str, *, allow_weak: bool) -> str | None:
     return None
 
 
-def _extract_mc_candidate(candidate: str) -> str | None:
-    first_line, trailing_lines = _collect_mc_scan_lines(candidate)
-    if first_line is not None:
-        first_line_match = _extract_mc_from_line(first_line, allow_weak=False)
-        if first_line_match is not None:
-            return first_line_match
-    if trailing_lines:
-        final_option = _MC_FINAL_OPTION_LINE_PATTERN.search(trailing_lines[-1])
-        if final_option is not None:
-            return normalize_mc_match(final_option.group(1))
-    for line in reversed(trailing_lines):
-        line_match = _extract_mc_from_line(line, allow_weak=True)
-        if line_match is not None:
-            return line_match
-    tail = candidate[-_MC_TAIL_SCAN_CHARS:]
-    for pattern in _MC_TAG_PATTERNS + _MC_WEAK_LINE_PATTERNS:
-        tail_match = _mc_match_last(pattern, tail)
-        if tail_match is not None:
-            return tail_match
-    return None
-
-
 def extract_mc_answer(text: str | None) -> str | None:
     if text is None:
         return None
-    text = text.strip()
+    text = _TERMINAL_CHAT_MARKER_RE.sub("", text).strip()
     if not text:
         return None
     candidate = text
@@ -303,13 +271,31 @@ def extract_mc_answer(text: str | None) -> str | None:
     for match in _THINK_CLOSE_RE.finditer(text):
         last_close = match
     if last_close is not None:
-        candidate = text[last_close.end() :].strip()
+        candidate = text[last_close.end() :].strip() or text
 
-    extracted = _extract_mc_candidate(candidate)
-    if extracted is not None:
-        return extracted
-    if candidate != text:
-        return _extract_mc_candidate(text)
+    first_line, trailing_lines = _collect_mc_scan_lines(candidate)
+    if first_line is not None:
+        first_line_match = _extract_mc_from_line(first_line, allow_weak=False)
+        if first_line_match is not None:
+            return first_line_match
+        if last_close is not None:
+            leading_choice = _MC_POST_THINK_LEADING_CHOICE.match(first_line)
+            if leading_choice is not None:
+                return normalize_mc_match(leading_choice.group(1))
+    for line in reversed(trailing_lines):
+        line_match = _extract_mc_from_line(line, allow_weak=True)
+        if line_match is not None:
+            return line_match
+    if last_close is not None:
+        for line in reversed(trailing_lines):
+            leading_choice = _MC_POST_THINK_LEADING_CHOICE.match(line)
+            if leading_choice is not None:
+                return normalize_mc_match(leading_choice.group(1))
+    tail = candidate[-_MC_TAIL_SCAN_CHARS:]
+    for pattern in _MC_TAG_PATTERNS + _MC_WEAK_LINE_PATTERNS:
+        tail_match = _mc_match_last(pattern, tail)
+        if tail_match is not None:
+            return tail_match
     return None
 
 

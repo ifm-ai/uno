@@ -170,7 +170,7 @@ def _summarize_grouped_correct(graded: list[dict[str, Any]]) -> dict[str, Any]:
         "num_problems": len(by_problem),
         "max_samples_per_problem": max_samples,
     }
-    for k in (1, 5):
+    for k in (1, 5, 10):
         if max_samples < k:
             continue
         avg_values = [values[:k] for values in by_problem.values()]
@@ -314,6 +314,6 @@ def score_code(
         "timeout": timeout,
         "grading_python": _GRADING_PYTHON,
     }
-    if task == "mbpp":
+    if task in {"humaneval", "mbpp"}:
         summary.update(_summarize_grouped_correct(graded))
     return graded, summary

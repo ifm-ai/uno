@@ -66,19 +66,20 @@ export NANO_HF_CACHE_DIR="${HF_CACHE_DIR:-}"
 export NANO_HF_LOCAL_FILES_ONLY="${HF_LOCAL_FILES_ONLY:-0}"
 export NANO_RESULTS_ROOT="${RESULTS_ROOT}"
 export NANO_RUN_NAME="${RUN_NAME}"
-export NANO_BENCHMARKS="${BENCHMARKS:-}"
+export NANO_BENCHMARKS="${BENCHMARKS:-gsm8k}"
+export NANO_PROTOCOL_ARM="${PROTOCOL_ARM:-}"
 export NANO_DATA_ROOT="${DATA_ROOT:-}"
-export NANO_NUM_SAMPLES="${NUM_SAMPLES:-1}"
+export NANO_NUM_SAMPLES="${NUM_SAMPLES:-}"
 export NANO_LIMIT="${LIMIT:-}"
-export NANO_MAX_NUM_SEQS="${MAX_NUM_SEQS:-64}"
-export NANO_CONTEXT_LENGTH="${CONTEXT_LENGTH:-32768}"
-export NANO_MAX_NUM_BATCHED_TOKENS="${MAX_NUM_BATCHED_TOKENS:-32768}"
+export NANO_MAX_NUM_SEQS="${MAX_NUM_SEQS:-}"
+export NANO_CONTEXT_LENGTH="${CONTEXT_LENGTH:-}"
+export NANO_MAX_NUM_BATCHED_TOKENS="${MAX_NUM_BATCHED_TOKENS:-}"
 export NANO_GPU_MEMORY_UTILIZATION="${GPU_MEMORY_UTILIZATION:-0.90}"
 export NANO_ATTENTION_BACKEND="${ATTENTION_BACKEND:-fa3}"
 export NANO_MAX_TOKENS="${MAX_TOKENS:-}"
-export NANO_TEMPERATURE="${TEMPERATURE:-1.0}"
-export NANO_TOP_K="${TOP_K:-50}"
-export NANO_TOP_P="${TOP_P:-0.95}"
+export NANO_TEMPERATURE="${TEMPERATURE:-}"
+export NANO_TOP_K="${TOP_K:-}"
+export NANO_TOP_P="${TOP_P:-}"
 export NANO_DIFFUSION_BLOCK_SIZE="${DIFFUSION_BLOCK_SIZE:-16}"
 export NANO_TREE_VERIFY_SIZE="${TREE_VERIFY_SIZE:-}"
 export NANO_TREE_CANDIDATE_TOP_K="${TREE_CANDIDATE_TOP_K:-16}"
@@ -91,10 +92,12 @@ export NANO_STOP_TOKEN_IDS="${STOP_TOKEN_IDS:-}"
 export NANO_CUDA_GRAPH_BLOCK_SIZES="${CUDA_GRAPH_BLOCK_SIZES:-1,${NANO_DIFFUSION_BLOCK_SIZE}}"
 if [[ -n "${CUDA_GRAPH_BATCH_SIZES:-}" ]]; then
   NANO_CUDA_GRAPH_BATCH_SIZES="${CUDA_GRAPH_BATCH_SIZES}"
-else
+elif [[ -n "${NANO_MAX_NUM_SEQS}" ]]; then
   NANO_CUDA_GRAPH_BATCH_SIZES="$(
     uno_cuda_graph_batch_sizes "${NANO_MAX_NUM_SEQS}"
   )"
+else
+  NANO_CUDA_GRAPH_BATCH_SIZES=""
 fi
 export NANO_CUDA_GRAPH_BATCH_SIZES
 export NANO_SAVE_TOKEN_IDS="${SAVE_TOKEN_IDS:-0}"
@@ -155,6 +158,48 @@ while IFS=$'\t' read -r benchmark data_path; do
     --generation-summary "${benchmark_dir}/generation_summary.json"
     --grader-num-processes "${GRADER_NUM_PROCESSES}"
   )
+  case "${benchmark}" in
+    hle)
+      judge_model="${HLE_JUDGE_MODEL:-${JUDGE_MODEL:-}}"
+      : "${judge_model:?Set HLE_JUDGE_MODEL=gpt-5.5 for HLE, or SKIP_GRADING=1}"
+      [[ "${judge_model}" == "gpt-5.5" ]] || {
+        echo "HLE protocol requires HLE_JUDGE_MODEL=gpt-5.5" >&2
+        exit 2
+      }
+      grading_command+=(
+        --judge-model "${judge_model}"
+        --judge-max-concurrency "${JUDGE_MAX_CONCURRENCY:-180}"
+        --judge-temperature 0.0
+        --judge-max-tokens 4096
+        --judge-reasoning-effort medium
+      )
+      ;;
+    lcr)
+      judge_model="${GLM_JUDGE_MODEL:-${JUDGE_MODEL:-}}"
+      : "${judge_model:?Set GLM_JUDGE_MODEL to GLM-5.2-FP8 for LCR, or SKIP_GRADING=1}"
+      grading_command+=(
+        --judge-model "${judge_model}"
+        --judge-max-concurrency "${JUDGE_MAX_CONCURRENCY:-180}"
+        --judge-temperature 0.2
+        --judge-max-tokens 4096
+        --judge-reasoning-effort medium
+      )
+      ;;
+    omniscience)
+      judge_model="${GLM_JUDGE_MODEL:-${JUDGE_MODEL:-}}"
+      : "${judge_model:?Set GLM_JUDGE_MODEL to GLM-5.2-FP8 for Omniscience, or SKIP_GRADING=1}"
+      grading_command+=(
+        --judge-model "${judge_model}"
+        --judge-max-concurrency "${JUDGE_MAX_CONCURRENCY:-32}"
+        --judge-temperature 0.0
+        --judge-max-tokens 4096
+      )
+      ;;
+  esac
+  if [[ "${benchmark}" =~ ^(hle|lcr|omniscience)$ ]]; then
+    [[ -z "${JUDGE_BASE_URL:-}" ]] || grading_command+=(--judge-base-url "${JUDGE_BASE_URL}")
+    [[ -z "${JUDGE_API_KEY:-}" ]] || grading_command+=(--judge-api-key "${JUDGE_API_KEY}")
+  fi
   printf 'Grading command:'
   printf ' %q' "${grading_command[@]}"
   printf '\n'

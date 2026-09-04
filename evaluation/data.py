@@ -1,4 +1,4 @@
-"""Public, reproducible builders for the 12-benchmark Uno suite."""
+"""Pinned data preparation for the canonical 13-benchmark Uno suite."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import csv
 import hashlib
 import io
 import json
+import os
 import pickle
 import random
 from pathlib import Path
@@ -15,8 +16,17 @@ import zlib
 
 from huggingface_hub import hf_hub_download
 
-from .benchmarks import DEFAULT_DATA_ROOT, get_benchmark, normalize_benchmark_name
+from .benchmarks import (
+    BENCHMARKS,
+    DEFAULT_DATA_ROOT,
+    get_benchmark,
+    normalize_benchmark_name,
+)
 
+
+PROTOCOL_SOURCE_REPO = "LLM360/eval-360-sources"
+PROTOCOL_SOURCE_REVISION = "f1d3a57020a52de762e73faba260ed15d9a8b6d7"
+PROTOCOL_SOURCE_DIR_ENV = "UNO_EVAL_PROTOCOL_SOURCE_DIR"
 
 LCB_SOURCE_REPO = "livecodebench/code_generation_lite"
 LCB_SOURCE_REVISION = "0fe84c3912ea0c4d4a78037083943e8f0c4dd505"
@@ -122,6 +132,53 @@ def _write_jsonl(
 def _row_count(path: Path) -> int:
     with path.open("rb") as handle:
         return sum(bool(line.strip()) for line in handle)
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def protocol_artifact_fingerprint(path: Path) -> tuple[int, str]:
+    """Return the row count and SHA256 used by the canonical protocol."""
+
+    return _row_count(path), _sha256(path)
+
+
+def _validate_protocol_artifact(path: Path, *, expected_rows: int, expected_sha256: str) -> None:
+    count = _row_count(path)
+    if count != expected_rows:
+        raise ValueError(f"{path} has {count} rows; expected {expected_rows}")
+    digest = _sha256(path)
+    if digest != expected_sha256:
+        raise ValueError(
+            f"{path} has sha256 {digest}; expected pinned protocol artifact "
+            f"{expected_sha256}"
+        )
+
+
+def _protocol_source_path(
+    source_dir: Path,
+    *,
+    benchmark_name: str,
+    source_filename: str,
+) -> Path:
+    """Resolve either a flat or repository-shaped exact protocol bundle."""
+
+    candidates = (
+        source_dir / f"{benchmark_name}.jsonl",
+        source_dir / source_filename,
+    )
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    rendered = ", ".join(str(candidate) for candidate in candidates)
+    raise FileNotFoundError(
+        f"No exact protocol artifact for {benchmark_name}; checked {rendered}"
+    )
 
 
 def prepare_gsm8k() -> list[dict[str, Any]]:
@@ -462,19 +519,72 @@ def prepare_benchmark_data(
     name: str,
     *,
     output_dir: Path = DEFAULT_DATA_ROOT,
+    source_dir: Path | None = None,
     overwrite: bool = False,
 ) -> Path:
     name = normalize_benchmark_name(name)
     benchmark = get_benchmark(name)
     output = output_dir / benchmark.data_path.name
     if output.is_file() and not overwrite:
-        count = _row_count(output)
-        if count == benchmark.expected_rows:
-            return output
-        raise ValueError(
-            f"{output} has {count} rows; expected {benchmark.expected_rows}. "
-            "Rebuild it with overwrite=True."
+        if benchmark.data_sha256 is None:
+            count = _row_count(output)
+            if count == benchmark.expected_rows:
+                return output
+            raise ValueError(
+                f"{output} has {count} rows; expected {benchmark.expected_rows}. "
+                "Rebuild it with overwrite=True."
+            )
+        _validate_protocol_artifact(
+            output,
+            expected_rows=benchmark.expected_rows,
+            expected_sha256=benchmark.data_sha256,
         )
+        return output
+
+    if source_dir is None:
+        configured_source_dir = os.environ.get(PROTOCOL_SOURCE_DIR_ENV)
+        source_dir = Path(configured_source_dir) if configured_source_dir else None
+
+    if benchmark.source_filename and benchmark.data_sha256:
+        if source_dir is not None:
+            source = _protocol_source_path(
+                source_dir,
+                benchmark_name=benchmark.name,
+                source_filename=benchmark.source_filename,
+            )
+            _validate_protocol_artifact(
+                source,
+                expected_rows=benchmark.expected_rows,
+                expected_sha256=benchmark.data_sha256,
+            )
+        else:
+            try:
+                source = Path(
+                    hf_hub_download(
+                        repo_id=PROTOCOL_SOURCE_REPO,
+                        repo_type="dataset",
+                        filename=benchmark.source_filename,
+                        revision=PROTOCOL_SOURCE_REVISION,
+                    )
+                )
+                _validate_protocol_artifact(
+                    source,
+                    expected_rows=benchmark.expected_rows,
+                    expected_sha256=benchmark.data_sha256,
+                )
+            except Exception as exc:
+                raise RuntimeError(
+                    f"Could not obtain the exact pinned {benchmark.name} input. "
+                    f"Set {PROTOCOL_SOURCE_DIR_ENV} or pass --source-dir with a "
+                    "flat or eval-360-sources-shaped protocol bundle. The public "
+                    "source repository may require authentication and some current "
+                    "files do not byte-match the historical protocol artifact."
+                ) from exc
+        output.parent.mkdir(parents=True, exist_ok=True)
+        temporary = output.with_suffix(output.suffix + ".tmp")
+        temporary.write_bytes(source.read_bytes())
+        temporary.replace(output)
+        return output
 
     try:
         builder = BUILDERS[name]
@@ -492,13 +602,15 @@ def prepare_all_benchmark_data(
     names: Iterable[str] | None = None,
     *,
     output_dir: Path = DEFAULT_DATA_ROOT,
+    source_dir: Path | None = None,
     overwrite: bool = False,
 ) -> dict[str, Path]:
-    selected = list(names) if names else list(BUILDERS)
+    selected = list(names) if names else list(BENCHMARKS)
     return {
         normalize_benchmark_name(name): prepare_benchmark_data(
             name,
             output_dir=output_dir,
+            source_dir=source_dir,
             overwrite=overwrite,
         )
         for name in selected

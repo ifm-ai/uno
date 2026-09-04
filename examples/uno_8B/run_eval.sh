@@ -9,10 +9,15 @@ BENCHMARK="$1"
 shift
 REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
 OUTPUT_DIR="${RESULTS_ROOT:-${REPO_ROOT}/results/uno_8B}/${RUN_NAME:-release}/${BENCHMARK}"
-case "${BENCHMARK}" in
-  aime25|aime26) DEFAULT_CONTEXT=500000; DEFAULT_MAX_TOKENS=500000 ;;
-  *) DEFAULT_CONTEXT=262144; DEFAULT_MAX_TOKENS=131072 ;;
-esac
+GRADE_ARGS=()
+if [[ "${SKIP_GRADING:-0}" == "1" ]]; then
+  GRADE_ARGS+=(--skip-grading)
+elif [[ "${BENCHMARK}" =~ ^(hle|lcr|aa-lcr|omniscience|aa-omniscience)$ ]]; then
+  : "${JUDGE_MODEL:?Set JUDGE_MODEL for ${BENCHMARK}, or SKIP_GRADING=1}"
+  GRADE_ARGS+=(--judge-model "${JUDGE_MODEL}")
+  [[ -z "${JUDGE_BASE_URL:-}" ]] || GRADE_ARGS+=(--judge-base-url "${JUDGE_BASE_URL}")
+  [[ -z "${JUDGE_API_KEY:-}" ]] || GRADE_ARGS+=(--judge-api-key "${JUDGE_API_KEY}")
+fi
 
 exec "${PYTHON:-python}" -m evaluation.run \
   --benchmark "${BENCHMARK}" \
@@ -25,17 +30,9 @@ exec "${PYTHON:-python}" -m evaluation.run \
   --grades "${OUTPUT_DIR}/grades.jsonl" \
   --scores "${OUTPUT_DIR}/scores.json" \
   --data-parallel-size "${DATA_PARALLEL_SIZE:-8}" \
-  --max-num-seqs "${MAX_NUM_SEQS:-4}" \
-  --max-model-len "${MAX_MODEL_LEN:-${DEFAULT_CONTEXT}}" \
-  --max-num-batched-tokens "${MAX_NUM_BATCHED_TOKENS:-${DEFAULT_CONTEXT}}" \
-  --max-tokens "${MAX_TOKENS:-${DEFAULT_MAX_TOKENS}}" \
   --attention-backend "${ATTENTION_BACKEND:-fa3}" \
-  --num-samples "${NUM_SAMPLES:-1}" \
-  --temperature "${TEMPERATURE:-1.0}" \
-  --top-k "${TOP_K:-50}" \
-  --top-p "${TOP_P:-0.95}" \
   --diffusion-block-size "${DIFFUSION_BLOCK_SIZE:-8}" \
   --mask-token-id "${MASK_TOKEN_ID:-250624}" \
   --stop-token-ids "${STOP_TOKEN_IDS:-250019,1}" \
-  --instruction "${INSTRUCTION-}" \
+  "${GRADE_ARGS[@]}" \
   "$@"

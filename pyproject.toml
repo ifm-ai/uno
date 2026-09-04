@@ -29,6 +29,7 @@ eval = [
   "langdetect==1.0.9",
   "math-verify==0.9.0",
   "nltk==3.9.4",
+  "openai>=1.0,<3",
 ]
 train = [
   "accelerate==1.7.0",

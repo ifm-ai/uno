@@ -1,4 +1,4 @@
-"""Pull-based, multi-GPU evaluator for the canonical 12-task suite."""
+"""Pull-based, multi-GPU evaluator for the canonical 13-task suite."""
 
 from __future__ import annotations
 
@@ -25,6 +25,7 @@ from evaluation.benchmarks import (
     get_benchmark,
     list_benchmarks,
 )
+from evaluation.data import protocol_artifact_fingerprint
 from nano_vllm_uno.utils.context_budget import (
     DEFAULT_CONTEXT_LENGTH,
     active_forward_reserve,
@@ -123,6 +124,7 @@ class SuiteSettings:
     hf_local_files_only: bool
     results_root: Path
     run_name: str
+    protocol_arm: str | None
     benchmarks: tuple[str, ...]
     data_root: Path | None
     num_samples: int
@@ -155,7 +157,35 @@ class SuiteSettings:
         model_revision = os.environ.get("NANO_MODEL_REVISION") or None
         tokenizer_path = os.environ.get("NANO_TOKENIZER_PATH", model)
         block_size = int(os.environ.get("NANO_DIFFUSION_BLOCK_SIZE", "16"))
-        max_num_seqs = int(os.environ.get("NANO_MAX_NUM_SEQS", "64"))
+        benchmarks = _selected_benchmarks()
+        protocol_arm = os.environ.get("NANO_PROTOCOL_ARM") or None
+        if len(benchmarks) != 1 and protocol_arm is None:
+            raise ValueError(
+                "A canonical pull run must select exactly one benchmark. "
+                "Use evaluation/submit_pull_suite.sh for the full suite, or "
+                "set NANO_PROTOCOL_ARM for a labeled uniform-parameter arm."
+            )
+        canonical = BENCHMARKS[benchmarks[0]] if len(benchmarks) == 1 else None
+
+        def resolved(name: str, canonical_value: Any, cast: Any) -> Any:
+            raw = os.environ.get(name)
+            value = canonical_value if raw is None or not raw.strip() else cast(raw)
+            if canonical is not None and value != canonical_value and protocol_arm is None:
+                raise ValueError(
+                    f"Canonical override {name}={value!r} requires NANO_PROTOCOL_ARM"
+                )
+            return value
+
+        max_num_seqs = resolved(
+            "NANO_MAX_NUM_SEQS",
+            canonical.max_num_seqs if canonical else 64,
+            int,
+        )
+        context_length = resolved(
+            "NANO_CONTEXT_LENGTH",
+            canonical.max_model_len if canonical else DEFAULT_CONTEXT_LENGTH,
+            int,
+        )
         default_graph_batches = _cuda_graph_batch_ladder(max_num_seqs)
         settings = cls(
             model=model,
@@ -173,35 +203,49 @@ class SuiteSettings:
             hf_local_files_only=_env_bool("NANO_HF_LOCAL_FILES_ONLY"),
             results_root=Path(os.environ["NANO_RESULTS_ROOT"]),
             run_name=os.environ["NANO_RUN_NAME"],
-            benchmarks=_selected_benchmarks(),
+            protocol_arm=protocol_arm,
+            benchmarks=benchmarks,
             data_root=(
                 Path(os.environ["NANO_DATA_ROOT"])
                 if os.environ.get("NANO_DATA_ROOT")
                 else None
             ),
-            num_samples=int(os.environ.get("NANO_NUM_SAMPLES", "1")),
+            num_samples=resolved(
+                "NANO_NUM_SAMPLES",
+                canonical.num_samples if canonical else 1,
+                int,
+            ),
             limit=_optional_int("NANO_LIMIT"),
             max_num_seqs=max_num_seqs,
-            context_length=int(
-                os.environ.get("NANO_CONTEXT_LENGTH", str(DEFAULT_CONTEXT_LENGTH))
-            ),
-            max_num_batched_tokens=int(
-                os.environ.get(
-                    "NANO_MAX_NUM_BATCHED_TOKENS",
-                    str(DEFAULT_CONTEXT_LENGTH),
-                )
+            context_length=context_length,
+            max_num_batched_tokens=resolved(
+                "NANO_MAX_NUM_BATCHED_TOKENS",
+                context_length,
+                int,
             ),
             gpu_memory_utilization=float(
                 os.environ.get("NANO_GPU_MEMORY_UTILIZATION", "0.90")
             ),
             attention_backend=os.environ.get("NANO_ATTENTION_BACKEND", "fa3"),
-            global_max_tokens=_optional_int("NANO_MAX_TOKENS"),
-            temperature=float(os.environ.get("NANO_TEMPERATURE", "1.0")),
-            top_k=_optional_int("NANO_TOP_K") if "NANO_TOP_K" in os.environ else 50,
-            top_p=(
-                float(os.environ["NANO_TOP_P"])
-                if os.environ.get("NANO_TOP_P")
-                else 0.95
+            global_max_tokens=resolved(
+                "NANO_MAX_TOKENS",
+                canonical.max_tokens if canonical else None,
+                int,
+            ),
+            temperature=resolved(
+                "NANO_TEMPERATURE",
+                canonical.temperature if canonical else 1.0,
+                float,
+            ),
+            top_k=resolved(
+                "NANO_TOP_K",
+                canonical.top_k if canonical else None,
+                int,
+            ),
+            top_p=resolved(
+                "NANO_TOP_P",
+                canonical.top_p if canonical else 0.95,
+                float,
             ),
             diffusion_block_size=block_size,
             tree_verify_size=_optional_int("NANO_TREE_VERIFY_SIZE"),
@@ -228,10 +272,8 @@ class SuiteSettings:
             ),
             cuda_graph_batch_sizes=tuple(
                 _int_list(
-                    os.environ.get(
-                        "NANO_CUDA_GRAPH_BATCH_SIZES",
-                        ",".join(map(str, default_graph_batches)),
-                    )
+                    os.environ.get("NANO_CUDA_GRAPH_BATCH_SIZES")
+                    or ",".join(map(str, default_graph_batches))
                 )
             ),
             save_token_ids=_env_bool("NANO_SAVE_TOKEN_IDS"),
@@ -255,6 +297,11 @@ class SuiteSettings:
             raise ValueError("NANO_NUM_SAMPLES must be positive")
         if self.limit is not None and self.limit < 1:
             raise ValueError("NANO_LIMIT must be positive")
+        if self.limit is not None and self.protocol_arm is None:
+            raise ValueError(
+                "NANO_LIMIT changes the canonical item set and requires "
+                "NANO_PROTOCOL_ARM"
+            )
         if self.max_num_seqs < 1:
             raise ValueError("NANO_MAX_NUM_SEQS must be positive")
         if self.context_length < 1:
@@ -412,6 +459,16 @@ def prepare_suite(settings: SuiteSettings, tokenizer: Any) -> PreparedSuite:
     for benchmark_name in settings.benchmarks:
         config = BENCHMARKS[benchmark_name]
         data_path = _data_path(config, settings.data_root)
+        actual_rows, actual_sha256 = protocol_artifact_fingerprint(data_path)
+        if settings.protocol_arm is None and config.data_sha256 is not None and (
+            actual_rows != config.expected_rows
+            or actual_sha256 != config.data_sha256
+        ):
+            raise ValueError(
+                f"{config.name} data does not match the canonical protocol: "
+                f"rows={actual_rows}, sha256={actual_sha256}; expected "
+                f"rows={config.expected_rows}, sha256={config.data_sha256}"
+            )
         records = _load_records(data_path, settings.limit)
         if settings.limit is None and len(records) != config.expected_rows:
             raise ValueError(
@@ -522,6 +579,8 @@ def build_manifest(
     return {
         "manifest_version": MANIFEST_VERSION,
         "backend": "nano_vllm_uno_pull_suite",
+        "protocol": "K2V3 Eval Protocol 2026-09-01",
+        "protocol_arm": settings.protocol_arm,
         "model": settings.model,
         "model_revision": settings.model_revision,
         "tokenizer_path": settings.tokenizer_path,

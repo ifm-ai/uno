@@ -12,18 +12,19 @@ SLURM_CPUS_PER_JOB="${SLURM_CPUS_PER_JOB:-64}"
 SLURM_TIME="${SLURM_TIME:-2-00:00:00}"
 
 default_benchmarks=(
-  gsm8k
-  math500
   aime24
   aime25
   aime26
-  humaneval
-  mbpp
-  lcbv6
-  gpqa
+  arc_challenge
   gpqa_diamond
-  mmlu_pro
+  gsm8k
+  hle
+  humaneval
   ifeval
+  lcr
+  math500
+  mbpp
+  omniscience
 )
 if [[ -n "${BENCHMARKS:-}" ]]; then
   read -r -a benchmarks <<< "${BENCHMARKS}"

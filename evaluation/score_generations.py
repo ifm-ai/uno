@@ -22,12 +22,9 @@ from .parsers import (
 
 
 MATH_TASKS = {"gsm8k", "math500", "aime24", "aime25", "aime26"}
-MC_TASKS = {
-    "gpqa",
-    "gpqa_diamond",
-    "mmlu_pro",
-}
+MC_TASKS = {"arc_challenge", "gpqa_diamond"}
 CODE_TASKS = {"humaneval", "mbpp"}
+JUDGE_TASKS = {"aa_lcr", "aa_omniscience"}
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -64,7 +61,41 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default=min(64, os.cpu_count() or 1),
         help="Worker count for aggregate LCB code grading.",
     )
+    parser.add_argument("--judge-model")
+    parser.add_argument("--judge-base-url")
+    parser.add_argument("--judge-api-key")
+    parser.add_argument("--judge-max-concurrency", type=int, default=8)
+    parser.add_argument("--judge-temperature", type=float)
+    parser.add_argument("--judge-max-tokens", type=int)
+    parser.add_argument("--judge-reasoning-effort")
     return parser.parse_args(argv)
+
+
+def _judge_request_kwargs(args: argparse.Namespace) -> dict[str, object]:
+    kwargs: dict[str, object] = {}
+    if args.judge_temperature is not None:
+        kwargs["temperature"] = args.judge_temperature
+    if args.judge_max_tokens is not None:
+        kwargs["max_tokens"] = args.judge_max_tokens
+    if args.judge_reasoning_effort:
+        kwargs["extra_body"] = {
+            "chat_template_kwargs": {
+                "reasoning_effort": args.judge_reasoning_effort,
+            }
+        }
+    return kwargs
+
+
+def _intended_samples(
+    benchmark: object,
+    generation_summary: dict[str, object] | None,
+) -> int:
+    samples = int(getattr(benchmark, "num_samples"))
+    if generation_summary is not None:
+        samples = int(
+            generation_summary.get("num_samples_per_problem", samples)
+        )
+    return samples
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -89,32 +120,71 @@ def main(argv: list[str] | None = None) -> None:
             benchmark.grader_timeout if benchmark is not None else 10.0
         )
 
+    generation_summary = None
+    if args.generation_summary is not None:
+        generation_summary = json.loads(
+            args.generation_summary.read_text(encoding="utf-8")
+        )
+
     rows = read_jsonl(args.generations)
     rows = merge_source_metadata(rows, load_source_records(args.data))
     rows = apply_parser(rows, parser_name)
+    judge_kwargs = _judge_request_kwargs(args)
 
     if task in MATH_TASKS:
         graded, summary = score_math(rows, task=task)
     elif task in MC_TASKS:
         graded, summary = score_multiple_choice(rows)
+        if task == "gpqa_diamond" and benchmark is not None:
+            expected = benchmark.expected_rows * _intended_samples(
+                benchmark,
+                generation_summary,
+            )
+            summary["fixed_denominator"] = expected
+            summary["accuracy"] = summary["num_correct"] / expected
     elif task in CODE_TASKS:
         graded, summary = score_code(rows, task=task, timeout=args.timeout)
-    elif task == "lcbv6":
-        from .graders.lcb import score_lcbv6
-
-        graded, summary = score_lcbv6(
-            rows,
-            timeout=int(args.timeout),
-            num_processes=args.grader_num_processes,
-        )
     elif task == "ifeval":
         from .graders.ifeval import score_ifeval
 
         graded, summary = score_ifeval(rows)
-    elif task == "aa_lcr":
-        from .graders.lcr import score_lcr
+    elif task == "hle" or task in JUDGE_TASKS:
+        from .graders.llm_judge import score_llm_judge
 
-        graded, summary = score_lcr(rows)
+        if task == "hle":
+            exact_rows = [
+                row for row in rows
+                if row.get("answer_type") != "multipleChoice"
+            ]
+            if exact_rows and args.judge_model != "gpt-5.5":
+                raise ValueError(
+                    "HLE exact-answer scoring requires --judge-model gpt-5.5"
+                )
+        elif not args.judge_model or "GLM-5.2-FP8" not in args.judge_model:
+            raise ValueError(
+                f"{task} scoring requires a GLM-5.2-FP8 --judge-model"
+            )
+        if not args.judge_model:
+            # This is valid only for an HLE file containing MC rows alone.
+            graded, summary = score_multiple_choice(rows)
+            summary["grader"] = "hle_multiple_choice"
+        else:
+            graded, summary = score_llm_judge(
+                rows,
+                task=task,
+                model=args.judge_model,
+                base_url=args.judge_base_url,
+                api_key=args.judge_api_key,
+                max_concurrency=args.judge_max_concurrency,
+                request_kwargs=judge_kwargs,
+            )
+        if benchmark is not None and task in {"hle", "aa_lcr"}:
+            expected = benchmark.expected_rows * _intended_samples(
+                benchmark,
+                generation_summary,
+            )
+            summary["fixed_denominator"] = expected
+            summary["accuracy"] = summary["num_correct"] / expected
     else:
         raise ValueError(f"Unsupported task: {args.task}")
 
@@ -128,10 +198,7 @@ def main(argv: list[str] | None = None) -> None:
             "grades_path": str(args.grades),
         }
     )
-    if args.generation_summary is not None:
-        generation_summary = json.loads(
-            args.generation_summary.read_text(encoding="utf-8")
-        )
+    if generation_summary is not None:
         summary["generation_metrics"] = generation_summary
         for key in (
             "total_output_tokens",

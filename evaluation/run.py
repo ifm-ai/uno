@@ -97,16 +97,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--data-parallel-size", type=int, default=8)
     parser.add_argument("--tensor-parallel-size", type=int, default=1)
-    parser.add_argument("--max-num-seqs", type=int, default=256)
+    parser.add_argument("--max-num-seqs", type=int)
     parser.add_argument(
         "--max-model-len",
         type=int,
-        default=DEFAULT_CONTEXT_LENGTH,
+        default=None,
     )
     parser.add_argument(
         "--max-num-batched-tokens",
         type=int,
-        default=DEFAULT_CONTEXT_LENGTH,
+        default=None,
     )
     parser.add_argument("--gpu-memory-utilization", type=float, default=0.9)
     parser.add_argument(
@@ -115,9 +115,16 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         default="fa3",
     )
     parser.add_argument("--max-tokens", type=int)
-    parser.add_argument("--temperature", type=float, default=0.0)
+    parser.add_argument("--temperature", type=float)
     parser.add_argument("--top-k", type=int)
     parser.add_argument("--top-p", type=float)
+    parser.add_argument(
+        "--protocol-arm",
+        help=(
+            "Required label when overriding canonical sampling, context, output "
+            "budget, or prompt settings."
+        ),
+    )
     parser.add_argument("--stop-token-ids", type=parse_int_list)
     parser.add_argument("--diffusion-block-size", type=int, default=16)
     parser.add_argument("--tree-verify-size", type=int)
@@ -176,7 +183,60 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--parser")
     parser.add_argument("--grader-timeout", type=float)
     parser.add_argument("--grader-num-processes", type=int)
+    parser.add_argument("--judge-model")
+    parser.add_argument("--judge-base-url")
+    parser.add_argument("--judge-api-key")
+    parser.add_argument("--judge-max-concurrency", type=int)
+    parser.add_argument("--judge-temperature", type=float)
+    parser.add_argument("--judge-max-tokens", type=int)
+    parser.add_argument("--judge-reasoning-effort")
     return parser.parse_args(argv)
+
+
+def _resolve_protocol_defaults(args: argparse.Namespace, benchmark: Any | None) -> dict[str, Any]:
+    defaults = {
+        "num_samples": benchmark.num_samples if benchmark else 1,
+        "temperature": benchmark.temperature if benchmark else 1.0,
+        "top_k": benchmark.top_k if benchmark else None,
+        "top_p": benchmark.top_p if benchmark else None,
+        "max_tokens": benchmark.max_tokens if benchmark else None,
+        "max_model_len": benchmark.max_model_len if benchmark else DEFAULT_CONTEXT_LENGTH,
+        "max_num_seqs": benchmark.max_num_seqs if benchmark else 256,
+        "instruction": benchmark.instruction if benchmark else "",
+    }
+    overrides: dict[str, Any] = {}
+    for name, default in defaults.items():
+        supplied = getattr(args, name)
+        if supplied is None:
+            setattr(args, name, default)
+        elif benchmark is not None and supplied != default:
+            overrides[name] = {"canonical": default, "actual": supplied}
+    if args.max_num_batched_tokens is None:
+        args.max_num_batched_tokens = args.max_model_len
+    elif benchmark is not None and args.max_num_batched_tokens != args.max_model_len:
+        overrides["max_num_batched_tokens"] = {
+            "canonical": args.max_model_len,
+            "actual": args.max_num_batched_tokens,
+        }
+    if overrides and not args.protocol_arm:
+        rendered = ", ".join(sorted(overrides))
+        raise ValueError(
+            f"Canonical protocol overrides ({rendered}) require --protocol-arm LABEL"
+        )
+    return overrides
+
+
+def _resolve_judge_defaults(args: argparse.Namespace, benchmark: Any | None) -> None:
+    if benchmark is None or benchmark.judge is None:
+        return
+    if args.judge_max_tokens is None:
+        args.judge_max_tokens = 4096
+    if args.judge_temperature is None:
+        args.judge_temperature = 0.2 if benchmark.task == "aa_lcr" else 0.0
+    if args.judge_max_concurrency is None:
+        args.judge_max_concurrency = 32 if benchmark.task == "aa_omniscience" else 180
+    if benchmark.task in {"hle", "aa_lcr"} and args.judge_reasoning_effort is None:
+        args.judge_reasoning_effort = "medium"
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -194,6 +254,8 @@ def main(argv: list[str] | None = None) -> None:
         args.model_revision = None
         args.gated_lora_revision = None
     benchmark = get_benchmark(args.benchmark) if args.benchmark else None
+    protocol_overrides = _resolve_protocol_defaults(args, benchmark)
+    _resolve_judge_defaults(args, benchmark)
     if args.data is None:
         if benchmark is None:
             raise ValueError("--data is required when --benchmark is not set")
@@ -215,14 +277,6 @@ def main(argv: list[str] | None = None) -> None:
         args.grades = args.output.with_name("grades.jsonl")
     if args.scores is None:
         args.scores = args.output.with_name("scores.json")
-    if args.num_samples is None:
-        args.num_samples = 1
-    if args.instruction is None:
-        args.instruction = (
-            benchmark.instruction
-            if benchmark is not None
-            else "Please reason step by step and put your final answer in \\boxed{}."
-        )
     chat_template_kwargs = (
         dict(benchmark.chat_template_kwargs) if benchmark is not None else {}
     )
@@ -231,11 +285,57 @@ def main(argv: list[str] | None = None) -> None:
         if not isinstance(overrides, dict):
             raise ValueError("--chat-template-kwargs-json must be a JSON object")
         chat_template_kwargs.update(overrides)
+        if benchmark is not None and chat_template_kwargs != dict(
+            benchmark.chat_template_kwargs
+        ):
+            protocol_overrides["chat_template_kwargs"] = {
+                "canonical": dict(benchmark.chat_template_kwargs),
+                "actual": chat_template_kwargs,
+            }
 
     if args.limit is not None and args.limit < 1:
         raise ValueError("--limit must be positive")
+    if benchmark is not None and args.limit is not None:
+        protocol_overrides["limit"] = {
+            "canonical": None,
+            "actual": args.limit,
+        }
+    if (
+        benchmark is not None
+        and args.parser is not None
+        and args.parser != benchmark.parser
+    ):
+        protocol_overrides["parser"] = {
+            "canonical": benchmark.parser,
+            "actual": args.parser,
+        }
     if args.num_samples < 1:
         raise ValueError("--num-samples must be positive")
+
+    if benchmark is not None:
+        from evaluation.data import protocol_artifact_fingerprint
+
+        actual_rows, actual_sha256 = protocol_artifact_fingerprint(args.data)
+        if (
+            actual_rows != benchmark.expected_rows
+            or actual_sha256 != benchmark.data_sha256
+        ):
+            protocol_overrides["data"] = {
+                "canonical": {
+                    "rows": benchmark.expected_rows,
+                    "sha256": benchmark.data_sha256,
+                },
+                "actual": {
+                    "rows": actual_rows,
+                    "sha256": actual_sha256,
+                },
+            }
+    if protocol_overrides and not args.protocol_arm:
+        rendered = ", ".join(sorted(protocol_overrides))
+        raise ValueError(
+            f"Canonical protocol overrides ({rendered}) require "
+            "--protocol-arm LABEL"
+        )
 
     records = load_records(args.data, args.limit)
     if (
@@ -435,6 +535,9 @@ def main(argv: list[str] | None = None) -> None:
         "total_output_tokens": total_output_tokens,
         **metrics,
         "resolved_settings": {
+            "protocol": "K2V3 Eval Protocol 2026-09-01",
+            "protocol_arm": args.protocol_arm,
+            "protocol_overrides": protocol_overrides,
             "global_max_tokens": args.max_tokens,
             "temperature": args.temperature,
             "top_k": args.top_k,
@@ -492,6 +595,17 @@ def main(argv: list[str] | None = None) -> None:
             score_argv.extend(
                 ("--grader-num-processes", str(args.grader_num_processes))
             )
+        for flag, value in (
+            ("--judge-model", args.judge_model),
+            ("--judge-base-url", args.judge_base_url),
+            ("--judge-api-key", args.judge_api_key),
+            ("--judge-max-concurrency", args.judge_max_concurrency),
+            ("--judge-temperature", args.judge_temperature),
+            ("--judge-max-tokens", args.judge_max_tokens),
+            ("--judge-reasoning-effort", args.judge_reasoning_effort),
+        ):
+            if value is not None:
+                score_argv.extend((flag, str(value)))
         score_main(score_argv)
 
 

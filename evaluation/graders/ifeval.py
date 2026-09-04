@@ -16,7 +16,7 @@ from ..ifeval_lib.evaluation_lib import (
 from ..parsers import generation_list
 
 
-_THINK_CLOSE_RE = re.compile(r"</think[^>]*>", flags=re.IGNORECASE)
+_THINK_CLOSE_RE = re.compile(r"</(?:ifm\|)?think[^>]*>", flags=re.IGNORECASE)
 
 
 def _strip_thinking(text: str | None) -> str:
