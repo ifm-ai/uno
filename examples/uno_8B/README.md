@@ -117,10 +117,7 @@ and benchmark protocol fixed.
 
 ## Training
 
-The paper trains the diffusion weights as rank-128 conditional LoRA adapters
-while keeping the AR weights frozen. The public repository currently provides
-the released Uno 8B adapter and its inference/evaluation workflows, but not a
-model-specific `run_train.sh` recipe in this directory.
+Training code for Uno 8B will be released soon.
 
 ## Notes
 

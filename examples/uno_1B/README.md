@@ -80,9 +80,7 @@ Evaluation results for Uno 1B will be available soon.
 
 ## Training
 
-The public repository currently provides the released Uno 1B adapter and its
-inference/evaluation workflows, but not a model-specific `run_train.sh` recipe
-in this directory.
+Training code for Uno 1B will be released soon.
 
 ## Notes
 
