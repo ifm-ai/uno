@@ -85,11 +85,11 @@ OpenAI-compatible endpoint. To generate without grading, set
 
 The following results are reported in Table 1 of the
 [Uno paper](https://arxiv.org/abs/2609.04010). Accuracy is average pass@1.
-`TPF 1` uses the system-throughput-optimal Linear sampler with block size 4;
-`TPF 2` uses the per-request-throughput-optimal Tree sampler with
+The Linear Sampler uses the system-throughput-optimal block size 4. The Tree
+Sampler uses the per-request-throughput-optimal configuration
 `(B, K, V) = (16, 32, 32)`.
 
-| Benchmark | Accuracy (%) | TPF 1 | TPF 2 |
+| Benchmark | Accuracy (%) | Linear Sampler TPF | Tree Sampler TPF |
 | --- | ---: | ---: | ---: |
 | tau3 Banking | 25.8 | 1.8 | 2.7 |
 | tau2 Telecom | 90.1 | 1.7 | 2.1 |
