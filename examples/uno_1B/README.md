@@ -76,11 +76,7 @@ OpenAI-compatible endpoint. To generate without grading, set
 
 ## Evaluation Results
 
-Evaluation results for Uno 1B will be available soon. The current
-[Uno paper](https://arxiv.org/abs/2609.04010) reports detailed accuracy, TPF,
-and throughput tables for Uno 8B and Uno Qwen3 8B, but does not provide a
-separate benchmark table for the released Uno 1B checkpoint. Results from
-another model size are therefore not copied into this README.
+Evaluation results for Uno 1B will be available soon.
 
 ## Training
 
