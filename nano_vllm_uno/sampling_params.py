@@ -28,12 +28,13 @@ class SamplingParams:
                 raise ValueError("top_p must be in (0, 1] when provided")
         if self.top_k is not None:
             self.top_k = int(self.top_k)
-        if self.top_p is not None and (
-            self.top_k is None or self.top_k <= 0
+        if (
+            self.top_p is not None
+            and self.top_k is not None
+            and self.top_k <= 0
         ):
             raise ValueError(
-                "top_p requires a positive top_k; top-p-only sampling "
-                "is not supported"
+                "top_k must be positive when provided with top_p"
             )
         self.diffusion_block_size = int(self.diffusion_block_size)
         if self.diffusion_block_size < 1:

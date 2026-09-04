@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "nano-vllm-uno"
 version = "0.1.0"
-description = "Training and inference for Uno lossless speculative decoding"
+description = "Training, inference, and evaluation for Uno models"
 readme = "README.md"
 requires-python = ">=3.10,<3.11"
 license = { text = "Apache-2.0" }
@@ -29,6 +29,7 @@ eval = [
   "langdetect==1.0.9",
   "math-verify==0.9.0",
   "nltk==3.9.4",
+  "openai>=1.0,<3",
 ]
 train = [
   "accelerate==1.7.0",
@@ -41,10 +42,13 @@ train = [
 ]
 
 [project.urls]
-Repository = "https://github.com/drproduck/nano-vllm-uno"
+Repository = "https://github.com/ifm-ai/uno"
+
+[tool.setuptools]
+py-modules = ["generation", "inference"]
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["nano_vllm_uno*"]
+include = ["nano_vllm_uno*", "evaluation*", "training*"]
 exclude = ["nano_vllm_uno.tests*"]
 namespaces = true

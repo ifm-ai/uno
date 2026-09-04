@@ -46,6 +46,50 @@ def build_sparse_top_k_probs(
     return indices, probs
 
 
+@torch.inference_mode()
+def build_sparse_top_p_probs(
+    logits: Tensor,
+    temperature: float,
+    top_p: float,
+    initial_k: int = 256,
+) -> tuple[Tensor, Tensor]:
+    """Return the exact nucleus distribution on an adaptive sparse support."""
+    vocab_size = int(logits.size(-1))
+    log_z = torch.logsumexp(
+        logits.float() / float(temperature),
+        dim=-1,
+        keepdim=True,
+    )
+    candidate_k = min(int(initial_k), vocab_size)
+
+    while True:
+        if logits.is_cuda and _flashinfer_top_k is not None:
+            values, indices = _flashinfer_top_k(
+                logits.contiguous(),
+                candidate_k,
+                sorted=True,
+                deterministic=False,
+            )
+        else:
+            values, indices = torch.topk(
+                logits,
+                k=candidate_k,
+                dim=-1,
+                sorted=True,
+            )
+        probs = torch.exp(values.float() / float(temperature) - log_z)
+        if candidate_k == vocab_size or bool(
+            torch.all(probs.sum(dim=-1) >= float(top_p)).item()
+        ):
+            break
+        candidate_k = min(2 * candidate_k, vocab_size)
+
+    cdf = torch.cumsum(probs, dim=-1)
+    probs.masked_fill_((cdf - probs) > float(top_p), 0.0)
+    probs /= probs.sum(dim=-1, keepdim=True).clamp_min(1e-12)
+    return indices, probs
+
+
 class Sampler(nn.Module):
     """Sample a logits batch using one configuration shared by every row."""
 
@@ -55,21 +99,30 @@ class Sampler(nn.Module):
         logits: Tensor,
         sampling_params: SamplingParams,
     ) -> tuple[Tensor, tuple[Tensor, Tensor] | None]:
-        """Sample tokens and retain q when it has compact top-k support."""
+        """Sample tokens and retain q when filtering has sparse support."""
         temperature = sampling_params.temperature
         top_k = sampling_params.top_k
         top_p = sampling_params.top_p
         if temperature <= 0.0:
             return torch.argmax(logits, dim=-1), None
-        if top_p is not None and top_p < 1.0 and (
-            top_k is None or not 0 < int(top_k) < logits.size(-1)
-        ):
-            raise ValueError("top_p requires top_k smaller than the model vocabulary")
         if top_k is not None and 0 < int(top_k) < logits.size(-1):
             indices, probs = build_sparse_top_k_probs(
                 logits,
                 temperature,
                 int(top_k),
+                top_p,
+            )
+            offsets = sample_from_probs(probs)
+            tokens = indices.gather(1, offsets.unsqueeze(1)).view(-1)
+            return tokens, (indices, probs)
+        if top_p is not None and top_p < 1.0:
+            if top_k is not None:
+                raise ValueError(
+                    "top_k must be smaller than the model vocabulary"
+                )
+            indices, probs = build_sparse_top_p_probs(
+                logits,
+                temperature,
                 top_p,
             )
             offsets = sample_from_probs(probs)

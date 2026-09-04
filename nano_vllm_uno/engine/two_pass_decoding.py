@@ -15,6 +15,7 @@ from nano_vllm_uno.engine.sequence import Sequence
 from nano_vllm_uno.layers.sampler import (
     Sampler,
     build_sparse_top_k_probs,
+    build_sparse_top_p_probs,
     sample_from_probs,
 )
 from nano_vllm_uno.sampling_params import SamplingParams
@@ -60,6 +61,7 @@ def _sparse_verify_tensors(
     draft_probs: Tensor,
     spec_vals: Tensor,
     accept_random: Tensor,
+    vocab_size: Optional[int] = None,
 ) -> Tuple[Tensor, Tensor]:
     """Return accept flags and correction probabilities on clean support."""
     p_spec = torch.where(
@@ -75,11 +77,16 @@ def _sparse_verify_tensors(
     ratio = torch.where(q_spec > 0, p_spec / q_spec, torch.zeros_like(p_spec))
     accepted = accept_random.lt(torch.clamp(ratio, max=1.0))
 
-    q_on_clean = torch.where(
-        clean_ids.unsqueeze(2).eq(draft_ids.unsqueeze(1)),
-        draft_probs.unsqueeze(1),
-        torch.zeros((), dtype=draft_probs.dtype, device=draft_probs.device),
-    ).sum(dim=2)
+    if vocab_size is None:
+        q_on_clean = torch.where(
+            clean_ids.unsqueeze(2).eq(draft_ids.unsqueeze(1)),
+            draft_probs.unsqueeze(1),
+            torch.zeros((), dtype=draft_probs.dtype, device=draft_probs.device),
+        ).sum(dim=2)
+    else:
+        q_dense = draft_probs.new_zeros((draft_probs.size(0), vocab_size))
+        q_dense.scatter_(1, draft_ids, draft_probs)
+        q_on_clean = q_dense.gather(1, clean_ids)
     correction_probs = torch.clamp(clean_probs - q_on_clean, min=0.0)
     correction_sum = correction_probs.sum(dim=1, keepdim=True)
     correction_probs = torch.where(
@@ -640,7 +647,7 @@ class TwoPassDecoder:
         lookahead_tokens: Tensor,
         draft_distribution: Tuple[Tensor, Tensor],
     ) -> Tensor:
-        """Apply top-k followed by top-p to verifier p/q distributions."""
+        """Apply top-k/top-p filtering to verifier p/q distributions."""
         B = int(proposal_batch.size(0))
         L = int(proposal_batch.size(1))
         if L <= 1:
@@ -657,9 +664,23 @@ class TwoPassDecoder:
         spec_vals = proposal_batch[:, 1:L].reshape(-1).to(verify_logits.device)
 
         temperature = sampling_params.temperature
-        top_k = int(sampling_params.top_k)
+        top_k = sampling_params.top_k
         top_p = sampling_params.top_p
-        clean_ids, clean_probs = build_sparse_top_k_probs(clean_flat, temperature, top_k, top_p)
+        if top_k is None:
+            clean_ids, clean_probs = build_sparse_top_p_probs(
+                clean_flat,
+                temperature,
+                float(top_p),
+            )
+            vocab_size = int(verify_logits.size(-1))
+        else:
+            clean_ids, clean_probs = build_sparse_top_k_probs(
+                clean_flat,
+                temperature,
+                int(top_k),
+                top_p,
+            )
+            vocab_size = None
         draft_ids, draft_probs = draft_distribution
 
         accept_random = torch.rand(
@@ -667,14 +688,14 @@ class TwoPassDecoder:
             dtype=clean_probs.dtype,
             device=clean_probs.device,
         )
-        verify_tensors = _sparse_verify_tensors
-        accepted_flat, correction_probs = verify_tensors(
+        accepted_flat, correction_probs = _sparse_verify_tensors(
             clean_ids,
             clean_probs,
             draft_ids,
             draft_probs,
             spec_vals,
             accept_random,
+            vocab_size,
         )
         correction_offsets = sample_from_probs(correction_probs).unsqueeze(1)
         corr_flat = clean_ids.gather(1, correction_offsets).squeeze(1)
@@ -718,7 +739,7 @@ class TwoPassDecoder:
         top_p = sampling_params.top_p
         use_top_k = top_k is not None and 0 < int(top_k) < verify_logits.size(-1)
         use_top_p = top_p is not None and 0.0 < float(top_p) < 1.0
-        if use_top_k:
+        if use_top_k or use_top_p:
             if draft_distribution is None:
                 raise RuntimeError(
                     "Filtered draft verification requires the sampled sparse q"
@@ -730,8 +751,6 @@ class TwoPassDecoder:
                 lookahead_tokens,
                 draft_distribution,
             )
-        if use_top_p:
-            raise ValueError("top_k must be smaller than the model vocabulary")
         return self._verify_unfiltered_fused(
             proposal_batch,
             verify_logits,
