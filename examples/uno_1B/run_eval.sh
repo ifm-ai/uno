@@ -8,6 +8,7 @@ fi
 BENCHMARK="$1"
 shift
 REPO_ROOT="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)"
+export PYTHONPATH="${REPO_ROOT}${PYTHONPATH:+:${PYTHONPATH}}"
 OUTPUT_DIR="${RESULTS_ROOT:-${REPO_ROOT}/results/uno_1B}/${RUN_NAME:-release}/${BENCHMARK}"
 GRADE_ARGS=()
 if [[ "${SKIP_GRADING:-0}" == "1" ]]; then
