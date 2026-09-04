@@ -22,18 +22,18 @@ fi
 
 exec "${PYTHON:-python}" -m evaluation.run \
   --benchmark "${BENCHMARK}" \
-  --model "${MODEL:-IFM/K2-Horizon-0.9B}" \
-  --model-revision "${MODEL_REVISION:-ee770e713760cf6350e4322cdbbff91a163b7d70}" \
-  --gated-lora-path "${GATED_LORA_PATH:-IFM/K2-Horizon-0.9B-Uno}" \
-  --gated-lora-revision "${GATED_LORA_REVISION:-b0d8896a301a2f4bc755538b1234a35100da50d0}" \
+  --model IFM/K2-Horizon-0.9B \
+  --model-revision ee770e713760cf6350e4322cdbbff91a163b7d70 \
+  --gated-lora-path IFM/K2-Horizon-0.9B-Uno \
+  --gated-lora-revision b0d8896a301a2f4bc755538b1234a35100da50d0 \
   --output "${OUTPUT_DIR}/generations.jsonl" \
   --summary-output "${OUTPUT_DIR}/generation_summary.json" \
   --grades "${OUTPUT_DIR}/grades.jsonl" \
   --scores "${OUTPUT_DIR}/scores.json" \
   --data-parallel-size "${DATA_PARALLEL_SIZE:-8}" \
-  --attention-backend "${ATTENTION_BACKEND:-fa3}" \
-  --diffusion-block-size "${DIFFUSION_BLOCK_SIZE:-8}" \
-  --mask-token-id "${MASK_TOKEN_ID:-64256}" \
-  --stop-token-ids "${STOP_TOKEN_IDS:-64019,1}" \
+  --attention-backend fa3 \
+  --diffusion-block-size 8 \
+  --mask-token-id 64256 \
+  --stop-token-ids 64019,1 \
   "${GRADE_ARGS[@]}" \
   "$@"

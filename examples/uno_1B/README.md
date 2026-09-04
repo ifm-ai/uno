@@ -32,15 +32,8 @@ bash examples/uno_1B/run_inference.sh \
 ```
 
 The launcher uses the model's 131,072-token YaRN context configuration and K2
-token IDs. Public checkpoints do not require an `HF_TOKEN`. To use local
-artifacts, override the two model sources:
-
-```bash
-MODEL=/path/to/K2-Horizon-0.9B \
-GATED_LORA_PATH=/path/to/K2-Horizon-0.9B-Uno \
-  bash examples/uno_1B/run_inference.sh \
-    --prompt "Solve 2 + 2 and explain your reasoning."
-```
+token IDs. Public checkpoints do not require an `HF_TOKEN`. The inference
+launcher accepts `MODEL` and `GATED_LORA_PATH` overrides for local artifacts.
 
 Additional inference arguments, such as `--max-tokens`, `--temperature`,
 `--top-p`, and `--diffusion-block-size`, are forwarded to the shared
@@ -54,9 +47,9 @@ Run one supported benchmark by name:
 bash examples/uno_1B/run_eval.sh gsm8k
 ```
 
-The launcher supplies the model-specific base, adapter, token IDs, and
-attention backend. Dataset-specific sampling and scoring settings come from
-`evaluation/benchmarks.py`.
+The evaluation launcher pins the released base and adapter revisions, FA3,
+diffusion block size 8, and the K2 token IDs. Dataset-specific sampling and
+scoring settings come from `evaluation/benchmarks.py`.
 
 Missing public evaluation data is prepared automatically. To keep prepared
 data and results in custom locations, set:
