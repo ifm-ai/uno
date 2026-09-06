@@ -110,16 +110,11 @@ python -m pip install torch==2.11.0 \
 python -m pip install ninja==1.13.0
 git clone --depth 1 --branch v2.8.3 \
   https://github.com/Dao-AILab/flash-attention.git
+# Adjust MAX_JOBS to match the available host memory.
 MAX_JOBS="${MAX_JOBS:-4}" \
   python -m pip install --no-build-isolation ./flash-attention/hopper
 python -m pip install -e '.[eval,train]'
 ```
-
-Uno uses FlashAttention-3 (FA3) for both Linear and Tree sampling; a separate
-FA2 installation is not required. FA3 compilation is memory-intensive. The
-command defaults to four parallel build jobs; reduce `MAX_JOBS` on
-memory-constrained machines, or increase it only when the build host has
-sufficient RAM.
 
 ### Checkpoints
 
