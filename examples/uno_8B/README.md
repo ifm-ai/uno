@@ -121,8 +121,7 @@ Training code for Uno 8B will be released soon.
 
 ## Notes
 
-- Linear sampling supports FA2, FA3, and FA4.
-- Tree verification requires FA3 or FA4; FA2 tree verification is rejected.
+- The provided Linear and Tree launchers use FA3.
 - Model-judge benchmarks require the judge configuration described above.
 - Reported accuracy and speed are comparable only when their evaluation and
   sampler protocols match.

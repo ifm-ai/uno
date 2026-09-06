@@ -136,6 +136,6 @@ variables.
 
 - The released Hugging Face repository contains both the base weights and the
   `adapter/` subfolder; a separate adapter path is not required.
-- Linear sampling can use FA2. Tree verification requires FA3 or FA4.
+- The provided Linear and Tree launchers use FA3.
 - Model-judge benchmarks require the judge configuration described above.
 - Always record the sampler and decoding protocol alongside reported TPF/TPS.

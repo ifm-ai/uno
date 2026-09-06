@@ -30,7 +30,7 @@ exec "${PYTHON:-python}" -m evaluation.run \
   --grades "${OUTPUT_DIR}/grades.jsonl" \
   --scores "${OUTPUT_DIR}/scores.json" \
   --data-parallel-size "${DATA_PARALLEL_SIZE:-8}" \
-  --attention-backend "${ATTENTION_BACKEND:-fa2}" \
+  --attention-backend "${ATTENTION_BACKEND:-fa3}" \
   --diffusion-block-size "${DIFFUSION_BLOCK_SIZE:-16}" \
   "${GRADE_ARGS[@]}" \
   "$@"

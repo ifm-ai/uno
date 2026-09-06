@@ -8,5 +8,5 @@ exec "${PYTHON:-python}" "${REPO_ROOT}/inference.py" \
   --gated-lora-subfolder "${GATED_LORA_SUBFOLDER:-adapter}" \
   --max-model-len "${MAX_MODEL_LEN:-32768}" \
   --max-num-batched-tokens "${MAX_NUM_BATCHED_TOKENS:-32768}" \
-  --attention-backend "${ATTENTION_BACKEND:-fa2}" \
+  --attention-backend "${ATTENTION_BACKEND:-fa3}" \
   "$@"

@@ -107,21 +107,19 @@ conda activate nano-vllm-uno
 python -m pip install --upgrade pip
 python -m pip install torch==2.11.0 \
   --index-url https://download.pytorch.org/whl/cu128
-python -m pip install \
-  'https://github.com/lesj0610/flash-attention/releases/download/v2.8.3-cu12-torch2.11/flash_attn-2.8.3%2Bcu12torch2.11cxx11abiTRUE-cp310-cp310-linux_x86_64.whl'
-python -m pip install -e '.[eval,train]'
-```
-
-This installs FlashAttention-2 (FA2), which is sufficient for linear
-decoding. Tree verification additionally requires FlashAttention-3 (FA3):
-
-```bash
 python -m pip install ninja==1.13.0
 git clone --depth 1 --branch v2.8.3 \
   https://github.com/Dao-AILab/flash-attention.git
-cd flash-attention/hopper
-MAX_JOBS=16 python -m pip install --no-build-isolation .
+MAX_JOBS="${MAX_JOBS:-4}" \
+  python -m pip install --no-build-isolation ./flash-attention/hopper
+python -m pip install -e '.[eval,train]'
 ```
+
+Uno uses FlashAttention-3 (FA3) for both Linear and Tree sampling; a separate
+FA2 installation is not required. FA3 compilation is memory-intensive. The
+command defaults to four parallel build jobs; reduce `MAX_JOBS` on
+memory-constrained machines, or increase it only when the build host has
+sufficient RAM.
 
 ### Checkpoints
 
@@ -205,16 +203,15 @@ bash examples/uno_1B/run_inference.sh \
   --prompt "Solve 2 + 2 and explain your reasoning."
 ```
 
-The example launchers use linear sampling by default. To enable tree sampling,
-install FA3 and pass the tree parameters to the same entry point:
+The example launchers use FA3 Linear sampling by default for all three models.
+To enable Tree sampling, pass the tree parameters to the same entry point:
 
 ```bash
-ATTENTION_BACKEND=fa3 \
-  bash examples/uno_qwen3_8B/run_inference.sh \
-    --prompt "Solve 2 + 2 and explain your reasoning." \
-    --diffusion-block-size 16 \
-    --tree-candidate-top-k 32 \
-    --tree-verify-size 60
+bash examples/uno_qwen3_8B/run_inference.sh \
+  --prompt "Solve 2 + 2 and explain your reasoning." \
+  --diffusion-block-size 16 \
+  --tree-candidate-top-k 32 \
+  --tree-verify-size 60
 ```
 
 The command prints generated text together with output-token count, elapsed
@@ -232,8 +229,10 @@ results are provided in each model-specific subdirectory under
 
 #### 1. Prepare Evaluation Data
 
-Missing public datasets are prepared automatically. They can also be prepared
-in advance:
+Missing datasets are downloaded from the pinned Hugging Face repositories and
+revisions in `evaluation/benchmarks.py`, converted to the evaluation format,
+and checked against their expected row counts and SHA256 hashes. They can also
+be prepared in advance:
 
 ```bash
 export UNO_EVAL_DATA_DIR=/path/to/uno-eval-data
@@ -287,6 +286,10 @@ Supported benchmarks:
 Run the complete suite sequentially:
 
 ```bash
+export HLE_JUDGE_API_KEY=your-openai-api-key
+export GLM_JUDGE_BASE_URL=http://your-glm-server/v1
+# export GLM_JUDGE_API_KEY=your-glm-api-key  # If required by the endpoint.
+
 MODEL_EXAMPLE=uno_qwen3_8B \
 RESULTS_ROOT=/path/to/results \
 DATA_PARALLEL_SIZE=1 \
