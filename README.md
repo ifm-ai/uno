@@ -36,7 +36,7 @@
 We introduce `Uno`, a diffusion-augmented LLM that 
 features two sets of weights:
 - **AR weights**: Trained using next-token prediction loss to define an AR distribution.
-- Diffusion weights: Trained to generate multiple tokens in parallel from the AR distribution.
+- **Diffusion weights**: Trained to generate multiple tokens in parallel from the AR distribution.
 
 To sample from `Uno`, we propose **$\Psi$-Spec** sampler, which enables provably lossless multi-token prediction from the AR distribution.
 - Unlike speculative decoding methods, `Uno` does not require a separately trained draft model and achieves higher throughput across all batch sizes.
