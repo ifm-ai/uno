@@ -24,8 +24,8 @@
   <p>
     <a href="https://arxiv.org/abs/2609.04010"><img src="https://img.shields.io/badge/arXiv-2609.04010-B31B1B.svg" alt="arXiv"></a>
     <a href="https://s-sahoo.com/uno/"><img src="https://img.shields.io/badge/Project-Page-4B5563.svg" alt="Project Page"></a>
-    <a href="https://huggingface.co/IFM/K2-Horizon-7B-Uno"><img src="https://img.shields.io/badge/Hugging%20Face-Uno%208B-FFD21E?logo=huggingface&amp;logoColor=000" alt="Uno 8B"></a>
-    <a href="https://huggingface.co/IFM/K2-Horizon-0.9B-Uno"><img src="https://img.shields.io/badge/Hugging%20Face-Uno%201B-FFD21E?logo=huggingface&amp;logoColor=000" alt="Uno 1B"></a>
+    <a href="https://huggingface.co/IFM/K2-Horizon-7B-Uno"><img src="https://img.shields.io/badge/Hugging%20Face-Uno%208B-FFD21E?logo=huggingface&amp;logoColor=000" alt="Uno 7B"></a>
+    <a href="https://huggingface.co/IFM/K2-Horizon-0.9B-Uno"><img src="https://img.shields.io/badge/Hugging%20Face-Uno%201B-FFD21E?logo=huggingface&amp;logoColor=000" alt="Uno 0.9B"></a>
     <a href="https://huggingface.co/s-sahoo/uno-qwen3-8B"><img src="https://img.shields.io/badge/Hugging%20Face-Uno%20Qwen3%208B-FFD21E?logo=huggingface&amp;logoColor=000" alt="Uno Qwen3 8B"></a>
   </p>
   <a href="https://s-sahoo.com/uno/"><img src="uno_results.png" alt="Uno training pipeline and evaluation results"></a>
@@ -51,8 +51,8 @@ In this repo, we release the code for:
     - `Tree sampler` for high per-request throughput.
   - Ready-to-run recipes for
     [Uno Qwen3 8B](https://huggingface.co/s-sahoo/uno-qwen3-8B),
-    [Uno 8B](https://huggingface.co/IFM/K2-Horizon-7B-Uno), and
-    [Uno 1B](https://huggingface.co/IFM/K2-Horizon-0.9B-Uno).
+    [Uno 7B](https://huggingface.co/IFM/K2-Horizon-7B-Uno), and
+    [Uno 0.9B](https://huggingface.co/IFM/K2-Horizon-0.9B-Uno).
 - **Training**
   - A conditional-LoRA diffusion training pipeline for Uno Qwen3 8B.
   - OpenThoughts data preparation and progressive block-size curricula.
@@ -127,8 +127,8 @@ MAX_JOBS=16 python -m pip install --no-build-isolation .
 
 | Model | Base model | Uno weights |
 | --- | --- | --- |
-| Uno 8B | [IFM/K2-Horizon-7B](https://huggingface.co/IFM/K2-Horizon-7B) | [IFM/K2-Horizon-7B-Uno](https://huggingface.co/IFM/K2-Horizon-7B-Uno) |
-| Uno 1B | [IFM/K2-Horizon-0.9B](https://huggingface.co/IFM/K2-Horizon-0.9B) | [IFM/K2-Horizon-0.9B-Uno](https://huggingface.co/IFM/K2-Horizon-0.9B-Uno) |
+| Uno 7B | [IFM/K2-Horizon-7B](https://huggingface.co/IFM/K2-Horizon-7B) | [IFM/K2-Horizon-7B-Uno](https://huggingface.co/IFM/K2-Horizon-7B-Uno) |
+| Uno 0.9B | [IFM/K2-Horizon-0.9B](https://huggingface.co/IFM/K2-Horizon-0.9B) | [IFM/K2-Horizon-0.9B-Uno](https://huggingface.co/IFM/K2-Horizon-0.9B-Uno) |
 | Uno Qwen3 8B | [s-sahoo/uno-qwen3-8B](https://huggingface.co/s-sahoo/uno-qwen3-8B) | [s-sahoo/uno-qwen3-8B/adapter](https://huggingface.co/s-sahoo/uno-qwen3-8B/tree/main/adapter) |
 
 Public checkpoints can be downloaded without a Hugging Face token. A token is
@@ -292,7 +292,7 @@ DATA_PARALLEL_SIZE=1 \
   bash evaluation/run_suite.sh
 ```
 
-Set `MODEL_EXAMPLE` to `uno_qwen3_8B`, `uno_8B`, or `uno_1B`.
+Set `MODEL_EXAMPLE` to `uno_qwen3_8B`, `uno_7B`, or `uno_0.9B`.
 
 ## Acknowledgements
 
