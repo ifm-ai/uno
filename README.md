@@ -24,8 +24,8 @@
   <p>
     <a href="https://arxiv.org/abs/2609.04010"><img src="https://img.shields.io/badge/arXiv-2609.04010-B31B1B.svg" alt="arXiv"></a>
     <a href="https://s-sahoo.com/uno/"><img src="https://img.shields.io/badge/Project-Page-4B5563.svg" alt="Project Page"></a>
-    <a href="https://huggingface.co/IFM/K2-Horizon-7B-Uno"><img src="https://img.shields.io/badge/Hugging%20Face-Uno%208B-FFD21E?logo=huggingface&amp;logoColor=000" alt="Uno 8B"></a>
-    <a href="https://huggingface.co/IFM/K2-Horizon-0.9B-Uno"><img src="https://img.shields.io/badge/Hugging%20Face-Uno%201B-FFD21E?logo=huggingface&amp;logoColor=000" alt="Uno 1B"></a>
+    <a href="https://huggingface.co/IFM/K2-Horizon-7B-Uno"><img src="https://img.shields.io/badge/Hugging%20Face-Uno%208B-FFD21E?logo=huggingface&amp;logoColor=000" alt="Uno 7B"></a>
+    <a href="https://huggingface.co/IFM/K2-Horizon-0.9B-Uno"><img src="https://img.shields.io/badge/Hugging%20Face-Uno%201B-FFD21E?logo=huggingface&amp;logoColor=000" alt="Uno 0.9B"></a>
     <a href="https://huggingface.co/s-sahoo/uno-qwen3-8B"><img src="https://img.shields.io/badge/Hugging%20Face-Uno%20Qwen3%208B-FFD21E?logo=huggingface&amp;logoColor=000" alt="Uno Qwen3 8B"></a>
   </p>
   <a href="https://s-sahoo.com/uno/"><img src="uno_results.png" alt="Uno training pipeline and evaluation results"></a>
