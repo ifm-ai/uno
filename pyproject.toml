@@ -18,7 +18,6 @@ dependencies = [
   "tqdm>=4.67,<5",
   "xxhash>=3.5,<4",
   "triton==3.6.0",
-  "flash-attn==2.8.3",
 ]
 
 [project.optional-dependencies]

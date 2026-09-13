@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Download and prepare public data for the Uno evaluation suite."""
+"""Download and prepare pinned data for the Uno evaluation suite."""
 
 from __future__ import annotations
 
@@ -21,15 +21,15 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         "benchmarks",
         nargs="*",
         metavar="BENCHMARK",
-        help="Public benchmarks to prepare; omitted means all available builders.",
+        help="Benchmarks to prepare; omitted means the full supported suite.",
     )
     parser.add_argument("--output-dir", type=Path, default=DEFAULT_DATA_ROOT)
     parser.add_argument(
         "--source-dir",
         type=Path,
         help=(
-            "Exact protocol artifact bundle, either flat or arranged like "
-            "LLM360/eval-360-sources. May also be set with "
+            "Optional offline directory containing final <benchmark>.jsonl "
+            "protocol artifacts. May also be set with "
             "UNO_EVAL_PROTOCOL_SOURCE_DIR."
         ),
     )

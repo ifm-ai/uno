@@ -42,7 +42,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--diffusion-block-size", type=int, default=8)
     parser.add_argument("--tree-verify-size", type=int)
     parser.add_argument("--tree-candidate-top-k", type=int, default=32)
-    parser.add_argument("--attention-backend", choices=("fa2", "fa3", "fa4"), default="fa2")
+    parser.add_argument("--attention-backend", choices=("fa2", "fa3", "fa4"), default="fa3")
     parser.add_argument("--tensor-parallel-size", type=int, default=1)
     parser.add_argument("--data-parallel-size", type=int, default=1)
     parser.add_argument("--gpu-memory-utilization", type=float, default=0.9)
