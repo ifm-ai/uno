@@ -129,11 +129,7 @@ MAX_JOBS=16 python -m pip install --no-build-isolation .
 | --- | --- | --- |
 | Uno 7B | [IFM/K2-Horizon-7B](https://huggingface.co/IFM/K2-Horizon-7B) | [IFM/K2-Horizon-7B-Uno](https://huggingface.co/IFM/K2-Horizon-7B-Uno) |
 | Uno 0.9B | [IFM/K2-Horizon-0.9B](https://huggingface.co/IFM/K2-Horizon-0.9B) | [IFM/K2-Horizon-0.9B-Uno](https://huggingface.co/IFM/K2-Horizon-0.9B-Uno) |
-| Uno Qwen3 8B | [s-sahoo/uno-qwen3-8B](https://huggingface.co/s-sahoo/uno-qwen3-8B) | [s-sahoo/uno-qwen3-8B/adapter](https://huggingface.co/s-sahoo/uno-qwen3-8B/tree/main/adapter) |
-
-Public checkpoints can be downloaded without a Hugging Face token. A token is
-still required for gated datasets such as GPQA and for any private or gated
-model repository.
+| Uno Qwen3 8B | [Qwen/Qwen3-8B](https://huggingface.co/Qwen/Qwen3-8B) | [s-sahoo/uno-qwen3-8B](https://huggingface.co/s-sahoo/uno-qwen3-8B) |
 
 ## Reproducing Experiments
 
