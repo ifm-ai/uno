@@ -112,8 +112,7 @@ python -m pip install \
 python -m pip install -e '.[eval,train]'
 ```
 
-This installs FlashAttention-2 (FA2), which is sufficient for linear
-decoding. Tree verification additionally requires FlashAttention-3 (FA3):
+This installs FlashAttention-2 (FA2), which is sufficient for `Linear Sampler`. `Tree Sampler` requires FlashAttention-3 (FA3):
 
 ```bash
 python -m pip install ninja==1.13.0
@@ -191,7 +190,7 @@ same shared `inference.py` workflow:
 bash examples/uno_qwen3_8B/run_inference.sh \
   --prompt "Solve 2 + 2 and explain your reasoning."
 
-# Uno 8B
+# Uno 7B
 bash examples/uno_8B/run_inference.sh \
   --prompt "Solve 2 + 2 and explain your reasoning."
 
