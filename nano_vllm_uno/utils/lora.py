@@ -134,6 +134,7 @@ def load_lora_adapter(
     applied = 0
     touched_modules: set[nn.Module] = set()
     targets = set()
+    prefixes = set()
     for prefix, lora_A, lora_B in _iter_lora_pairs(tensors):
         module, output_start = _module_for_prefix(model, prefix)
         lora_A, lora_B = _shard_lora_for_module(module, lora_A, lora_B)
@@ -141,10 +142,17 @@ def load_lora_adapter(
         applied += 1
         touched_modules.add(module)
         targets.add(prefix.split(".")[-1])
+        prefixes.add(prefix)
 
+    # Like PEFT, match target_modules by module-name suffix: both "q_proj" and
+    # "model.layers.0.self_attn.q_proj" are valid entries.
     expected_targets = set(adapter_config.get("target_modules") or [])
-    if expected_targets and not expected_targets.issubset(targets):
-        missing = sorted(expected_targets - targets)
+    missing = sorted(
+        target
+        for target in expected_targets
+        if not any(p == target or p.endswith(f".{target}") for p in prefixes)
+    )
+    if missing:
         raise RuntimeError(f"LoRA adapter missing expected target modules: {missing}")
 
     packed_groups = 0
